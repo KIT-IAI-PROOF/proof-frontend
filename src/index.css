@@ -1,0 +1,28 @@
+.react-flow__handle {
+    position: relative;
+    top: auto;
+    transform: none;
+    height: 9px;
+    width: 9px;
+    border-radius: 5px;
+    border: none;
+}
+
+.handles {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-around;
+    width: 9px;
+    height: 100%;
+    position: absolute;
+}
+
+.handles.sources {
+    right: -2px;
+    top: 0;
+}
+
+.handles.targets {
+    left: -2px;
+    top: 0;
+}

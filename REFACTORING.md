@@ -1,3 +1,0 @@
-- Replace oidc-ts with oidc-spa
-- Replace react router with tanstack router
-- Remove query hooks and slim down contexts/providers

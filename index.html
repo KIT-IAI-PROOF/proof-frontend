@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <meta content="initial-scale=1, viewport-fit=cover, width=device-width" name="viewport">
+    <title>PROOF</title>
+    <style>
+
+        @media (prefers-color-scheme: dark) {
+            body {
+                background-color: #2c2c2c;
+            }
+        }
+
+        @media (prefers-color-scheme: light) {
+            body {
+                background-color: #ffffff;
+            }
+        }
+
+        body {
+            min-height: calc(100% + env(safe-area-inset-top));
+            padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+            background-attachment: fixed;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-size: cover;
+        }
+    </style>
+</head>
+<body>
+<div id="root"></div>
+<script src="/src/index.tsx" type="module"></script>
+</body>
+</html>

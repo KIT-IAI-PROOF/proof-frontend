@@ -10,7 +10,7 @@ import {
     TemplatePagingModelListing,
     WorkflowDetail,
     WorkflowPagingModelListing
-} from "@webis/proof-config-manager-client";
+} from "@kit-iai-proof/proof-config-manager-client";
 import {useWorkflows} from "../hooks/storage/useWorkflows.ts";
 import {UseMutationResult} from "@tanstack/react-query";
 import {GridFilterModel, GridPaginationModel, GridSortModel} from "@mui/x-data-grid";

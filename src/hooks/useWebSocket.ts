@@ -5,7 +5,7 @@ import {IMessage as RMessage} from "../model/IMessage.ts";
 import {useTranslation} from "react-i18next";
 import {QueryClient, useQueryClient} from "@tanstack/react-query";
 import {ATTACHMENTS_KEY, BLOCKS_KEY, ENTITY_TYPES, EXECUTIONS_KEY, INVALIDATION_KEYS, PROGRAMS_KEY, TEMPLATES_KEY, VALID_ACTIONS, WORKFLOWS_KEY} from "../utils/constants.ts";
-import {BlockDetail, TemplateDetail, WorkflowDetail} from "@webis/proof-config-manager-client";
+import {BlockDetail, TemplateDetail, WorkflowDetail} from "@kit-iai-proof/proof-config-manager-client";
 import {IAppContext} from "../provider/AppProvider.tsx";
 import {AppContext} from "../provider/AppContext.tsx";
 

@@ -1,5 +1,5 @@
 import {keepPreviousData, QueryClient, useMutation, UseMutationResult, useQuery, useQueryClient, UseQueryResult} from "@tanstack/react-query";
-import {WorkflowDetail, WorkflowPagingModelListing} from "@webis/proof-config-manager-client";
+import {WorkflowDetail, WorkflowPagingModelListing} from "@kit-iai-proof/proof-config-manager-client";
 import {v4 as uuidv4} from "uuid";
 import {ENTITY_TYPES, INVALIDATION_KEYS, WORKFLOWS_KEY} from "../../utils/constants.ts";
 import {useContext, useEffect, useMemo} from "react";

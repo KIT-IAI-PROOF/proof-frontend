@@ -12,7 +12,7 @@ import {
     TemplateDetailSyncStrategyEnum,
     WorkflowDetail,
     BlockDetail
-} from "@webis/proof-config-manager-client";
+} from "@kit-iai-proof/proof-config-manager-client";
 import {useIsFetching, useQuery, UseQueryResult} from "@tanstack/react-query";
 import {TEMPLATES_KEY, WORKFLOWS_KEY} from "../../../utils/constants.ts";
 import {usePrograms} from "../../../hooks/storage/usePrograms.ts";

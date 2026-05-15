@@ -4,7 +4,7 @@ import {Box, Button, Divider, Paper, Tooltip} from "@mui/material";
 import {useTranslation} from "react-i18next";
 import {EditNoteRounded, Save} from "@mui/icons-material";
 import ConfigHeader from "../components/ConfigHeader.tsx";
-import {WorkflowDetail} from "@webis/proof-config-manager-client";
+import {WorkflowDetail} from "@kit-iai-proof/proof-config-manager-client";
 import UploadPanel from "../components/UploadPanel.tsx";
 import {ConfigContext} from "../../../provider/IConfigContext.tsx";
 

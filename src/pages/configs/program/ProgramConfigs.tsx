@@ -2,7 +2,7 @@ import {Fragment, ReactNode, useContext} from "react";
 import {Box, Button, Paper, Tooltip} from "@mui/material";
 import {useTranslation} from "react-i18next";
 import {DataGrid, GridColDef, GridFilterModel, GridPaginationModel, GridRowParams, GridSortModel} from "@mui/x-data-grid";
-import {ProgramListing} from "@webis/proof-config-manager-client";
+import {ProgramListing} from "@kit-iai-proof/proof-config-manager-client";
 import {NavigateFunction, useNavigate} from "react-router-dom";
 import {EditNoteRounded} from "@mui/icons-material";
 import {useIsFetching} from "@tanstack/react-query";

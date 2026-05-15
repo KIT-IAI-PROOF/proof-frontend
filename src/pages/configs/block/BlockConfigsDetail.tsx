@@ -32,7 +32,7 @@ import {IConfigContext} from "../../../provider/ConfigProvider.tsx";
 import dayjs from "dayjs";
 import InputsPanel from "../components/blocks/InputsPanel.tsx";
 import OutputsPanel from "../components/blocks/OutputsPanel.tsx";
-import {TemplateDetailSyncStrategyEnum} from "@webis/proof-config-manager-client";
+import {TemplateDetailSyncStrategyEnum} from "@kit-iai-proof/proof-config-manager-client";
 
 const BlockConfigsDetail: () => ReactNode = (): ReactNode => {
 

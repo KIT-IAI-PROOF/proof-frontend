@@ -15,7 +15,7 @@ import {
     InputDetailPhaseEnum,
     InputDetailTypeEnum,
     OutputDetailPhaseEnum
-} from "@webis/proof-config-manager-client";
+} from "@kit-iai-proof/proof-config-manager-client";
 import {
     Accordion,
     AccordionDetails,

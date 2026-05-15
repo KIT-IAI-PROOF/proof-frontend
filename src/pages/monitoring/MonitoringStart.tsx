@@ -13,7 +13,7 @@ import {
     ExecutionDetail,
     ExecutionDetailStatusEnum,
     InputDetail
-} from "@webis/proof-config-manager-client";
+} from "@kit-iai-proof/proof-config-manager-client";
 import {Info} from "@mui/icons-material";
 import {IOrchestrationService} from "../../services/interfaces/IOrchestrationService.ts";
 import OrchestrationService from "../../services/OrchestrationService.ts";

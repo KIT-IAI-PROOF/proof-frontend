@@ -3,7 +3,7 @@ import {useTranslation} from "react-i18next";
 import {Fragment, ReactNode, useContext, useEffect, useState} from "react";
 import ConfirmDialog from "../../../app/components/ConfirmDialog.tsx";
 import {EditorContext} from "../../../provider/IEditorContext.tsx";
-import {BlockDetail, TemplateDetail} from "@webis/proof-config-manager-client";
+import {BlockDetail, TemplateDetail} from "@kit-iai-proof/proof-config-manager-client";
 import {useBlocks} from "../../../hooks/storage/useBlocks.ts";
 import {NavigateFunction, useNavigate} from "react-router-dom";
 

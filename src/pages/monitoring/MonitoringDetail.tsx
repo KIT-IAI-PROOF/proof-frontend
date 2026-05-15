@@ -36,7 +36,7 @@ import {IAppContext} from "../../provider/AppProvider.tsx";
 import {AppContext} from "../../provider/AppContext.tsx";
 import {IMessage} from "@stomp/stompjs";
 import ConfirmDialog from "../../app/components/ConfirmDialog.tsx";
-import {ExecutionDetailStatusEnum, ExecutionListingStatusEnum} from "@webis/proof-config-manager-client";
+import {ExecutionDetailStatusEnum, ExecutionListingStatusEnum} from "@kit-iai-proof/proof-config-manager-client";
 import {IExecutionService} from "../../services/interfaces/IExecutionService.ts";
 import ExecutionService from "../../services/ExecutionService.ts";
 import {saveAs} from 'file-saver';

@@ -42,7 +42,7 @@ import {
     OutputDetail,
     TemplateDetail,
     WorkflowDetail
-} from "@webis/proof-config-manager-client";
+} from "@kit-iai-proof/proof-config-manager-client";
 import {convertWorkflow, getNextAvailableIndex, makeEdge, makeNode} from "../utils/storage/inboundConverter.ts";
 import {TWorkflow} from "../model/TWorkflow.ts";
 import useHistory from "../hooks/useHistory.ts";

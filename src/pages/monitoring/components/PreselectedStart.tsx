@@ -22,9 +22,9 @@ import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
 import {Info} from "@mui/icons-material";
 import {useTranslation} from "react-i18next";
 import Grid from "@mui/material/Grid2";
-import {BlockDetail, ExecutionDetail, InputDetail, OutputDetail} from "@webis/proof-config-manager-client";
+import {BlockDetail, ExecutionDetail, InputDetail, OutputDetail} from "@kit-iai-proof/proof-config-manager-client";
 import {MonitoringContext} from "../../../provider/IMonitoringContext.tsx";
-import {InputCommunicationTypeEnum, OutputCommunicationTypeEnum} from "@webis/proof-orchestrator-client";
+import {InputCommunicationTypeEnum, OutputCommunicationTypeEnum} from "@kit-iai-proof/proof-orchestrator-client";
 import Handle from "./Handle.tsx";
 
 interface IProps {

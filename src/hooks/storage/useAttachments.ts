@@ -1,5 +1,5 @@
 import {keepPreviousData, QueryClient, useMutation, UseMutationResult, useQuery, useQueryClient, UseQueryResult} from "@tanstack/react-query";
-import {AttachmentDetail, AttachmentPagingModelListing} from "@webis/proof-config-manager-client";
+import {AttachmentDetail, AttachmentPagingModelListing} from "@kit-iai-proof/proof-config-manager-client";
 import {v4 as uuidv4} from "uuid";
 import {ATTACHMENTS_KEY, ENTITY_TYPES, INVALIDATION_KEYS} from "../../utils/constants.ts";
 import {useContext, useEffect, useMemo} from "react";

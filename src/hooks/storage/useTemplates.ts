@@ -1,5 +1,5 @@
 import {keepPreviousData, QueryClient, useMutation, UseMutationResult, useQuery, useQueryClient, UseQueryResult} from "@tanstack/react-query";
-import {TemplateDetail, TemplatePagingModelListing} from "@webis/proof-config-manager-client";
+import {TemplateDetail, TemplatePagingModelListing} from "@kit-iai-proof/proof-config-manager-client";
 import {v4 as uuidv4} from "uuid";
 import {ENTITY_TYPES, INVALIDATION_KEYS, TEMPLATES_KEY} from "../../utils/constants.ts";
 import {useContext, useEffect, useMemo} from "react";

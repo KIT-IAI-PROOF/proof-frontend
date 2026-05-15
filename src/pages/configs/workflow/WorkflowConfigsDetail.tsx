@@ -2,7 +2,7 @@ import {Fragment, ReactNode, useContext, useEffect, useMemo, useState} from "rea
 import {NavigateFunction, useNavigate, useParams, useSearchParams} from "react-router-dom";
 import {Alert, Box, Button, Divider, Paper, Stack, Typography} from "@mui/material";
 import WorkflowBasicSettingsPanel from "../components/workflow/WorkflowBasicSettingsPanel.tsx";
-import {ExecutionListing, StepBasedConfigurationDetail, WorkflowDetailCommunicationParadigmEnum, WorkflowDetailSimulationStrategyEnum} from "@webis/proof-config-manager-client";
+import {ExecutionListing, StepBasedConfigurationDetail, WorkflowDetailCommunicationParadigmEnum, WorkflowDetailSimulationStrategyEnum} from "@kit-iai-proof/proof-config-manager-client";
 import {useTranslation} from "react-i18next";
 import {useIsFetching, useQuery, UseQueryResult} from "@tanstack/react-query";
 import {EXECUTIONS_KEY, STEPBASEDCONFIG_DEFAULT, WORKFLOWS_KEY} from "../../../utils/constants.ts";

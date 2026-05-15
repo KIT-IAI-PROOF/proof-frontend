@@ -16,7 +16,7 @@ import {
 } from "@xyflow/react";
 import {TWorkflow} from "../model/TWorkflow.ts";
 import {convertWorkflow} from "../utils/storage/inboundConverter.ts";
-import {ExecutionDetail, ExecutionPagingModelListing, WorkflowDetail} from "@webis/proof-config-manager-client";
+import {ExecutionDetail, ExecutionPagingModelListing, WorkflowDetail} from "@kit-iai-proof/proof-config-manager-client";
 import {TEdge} from "../model/TEdge.ts";
 import {UseMutationResult} from "@tanstack/react-query";
 import {GridFilterModel, GridPaginationModel, GridSortModel} from "@mui/x-data-grid";

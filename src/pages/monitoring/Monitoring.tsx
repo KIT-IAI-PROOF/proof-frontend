@@ -7,7 +7,7 @@ import {useTranslation} from "react-i18next";
 import {NavigateFunction, useNavigate} from "react-router-dom";
 import {IMonitoringContext} from "../../provider/MonitoringProvider.tsx";
 import Grid from "@mui/material/Grid2";
-import {ExecutionListing, ExecutionListingStatusEnum} from "@webis/proof-config-manager-client";
+import {ExecutionListing, ExecutionListingStatusEnum} from "@kit-iai-proof/proof-config-manager-client";
 import {QueryClient, useIsFetching, useMutation, UseMutationResult, useQueryClient} from "@tanstack/react-query";
 import {EXECUTIONS_KEY, INVALIDATION_KEYS} from "../../utils/constants.ts";
 import {IOrchestrationService} from "../../services/interfaces/IOrchestrationService.ts";

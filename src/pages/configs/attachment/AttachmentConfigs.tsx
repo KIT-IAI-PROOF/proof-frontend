@@ -6,7 +6,7 @@ import {BLOCKS_KEY} from "../../../utils/constants.ts";
 import {DataGrid, GridColDef, GridFilterModel, GridPaginationModel, GridRowParams, GridSortModel} from "@mui/x-data-grid";
 import {Box, Button, Paper, Tooltip} from "@mui/material";
 import {EditNoteRounded} from "@mui/icons-material";
-import {AttachmentListing} from "@webis/proof-config-manager-client";
+import {AttachmentListing} from "@kit-iai-proof/proof-config-manager-client";
 import ConfigHeader from "../components/ConfigHeader.tsx";
 import AddIcon from "@mui/icons-material/Add";
 import {ConfigContext} from "../../../provider/IConfigContext.tsx";

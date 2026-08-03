@@ -20,7 +20,7 @@ import {
 import React, {ChangeEvent, Dispatch, Fragment, MutableRefObject, ReactNode, SetStateAction, useContext} from "react";
 import {IAppContext} from "../../../../provider/AppProvider.tsx";
 import {AppContext} from "../../../../provider/AppContext.tsx";
-import {InputDetail, OutputDetail, OutputDetailCommunicationTypeEnum, OutputDetailPhaseEnum, OutputDetailTypeEnum} from "@kit-iai-proof/proof-config-manager-client";
+import {InputDetail, OutputDetail, OutputDetailCommunicationTypeEnum, OutputDetailPhaseEnum, OutputDetailTypeEnum} from "@webis/proof-config-manager-client";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import {Info} from "@mui/icons-material";
 
@@ -44,9 +44,11 @@ const OutputsPanel = ({
                           outModelVarNamesError,
                           accordionRefs
                       }: IProps) => {
+
     const {t} = useTranslation();
     const theme: Theme = useTheme();
     const {hasUnsavedChanges, updateHasUnsavedChanges} = useContext<IAppContext>(AppContext);
+
     return (
         <Fragment>
             {

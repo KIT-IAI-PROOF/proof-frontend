@@ -1,32 +1,29 @@
-import {Fragment, ReactNode, useContext} from "react";
+import {Fragment, ReactNode, useCallback, useContext, useEffect, useState} from "react";
 import {Box, Button, Paper, Tooltip} from "@mui/material";
 import AddIcon from '@mui/icons-material/Add';
 import {DataGrid, GridColDef, GridFilterModel, GridPaginationModel, GridRowParams, GridSortModel} from "@mui/x-data-grid";
-import {TemplateListing} from "@kit-iai-proof/proof-config-manager-client";
+import {TemplateListing, TemplatePagingModelListing} from "@webis/proof-config-manager-client";
 import {useTranslation} from "react-i18next";
 import {NavigateFunction, useNavigate} from "react-router-dom";
-import {useIsFetching} from "@tanstack/react-query";
-import {TEMPLATES_KEY} from "../../../utils/constants.ts";
+import {useIsFetching, useQuery, UseQueryResult} from "@tanstack/react-query";
+import {DEFAULT_FILTER, DEFAULT_PAGINATION, DEFAULT_TEMPLATES_SORTING, TEMPLATES_KEY} from "../../../utils/constants.ts";
 import {EditNoteRounded} from "@mui/icons-material";
-import ConfigHeader from "../components/ConfigHeader.tsx";
-import {ConfigContext} from "../../../provider/IConfigContext.tsx";
+import PageHeader from "../../../app/components/PageHeader.tsx";
+import {AxiosError} from "axios";
+import {IAppContext} from "../../../provider/AppProvider.tsx";
+import {AppContext} from "../../../provider/AppContext.tsx";
+import {searchTemplatesQueryOptions} from "../../../query/options/templateQueryOptions.tsx";
 
 const TemplateConfigs: () => ReactNode = (): ReactNode => {
 
     const {t} = useTranslation();
     const navigate: NavigateFunction = useNavigate();
+    const {publishEntityMessage} = useContext<IAppContext>(AppContext);
 
-    const {
-        templates,
-        templatesSortModel,
-        templatesFilterModel,
-        templatesPaginationModel,
-        onSortModelChange,
-        onFilterModelChange,
-        onPaginationModelChange,
-        templatesRequest,
-        updateTemplateId
-    } = useContext(ConfigContext);
+    const [templatesRequest, setTemplatesRequest] = useState<any>();
+    const [templatesSortModel, setTemplatesSortModel] = useState<GridSortModel>(DEFAULT_TEMPLATES_SORTING);
+    const [templatesFilterModel, setTemplatesFilterModel] = useState<GridFilterModel>(DEFAULT_FILTER);
+    const [templatesPaginationModel, setTemplatesPaginationModel] = useState<GridPaginationModel>(DEFAULT_PAGINATION);
 
     const isFetching: number = useIsFetching({queryKey: [TEMPLATES_KEY, templatesRequest], exact: true});
 
@@ -51,6 +48,28 @@ const TemplateConfigs: () => ReactNode = (): ReactNode => {
         }
     ];
 
+    useEffect((): void => {
+        setTemplatesRequest({
+            sort: templatesSortModel,
+            filter: templatesFilterModel,
+            pagination: templatesPaginationModel
+        })
+    }, [templatesSortModel, templatesFilterModel, templatesPaginationModel]);
+
+    const onSortModelChange = useCallback((sortModel: GridSortModel) => {
+        setTemplatesSortModel(sortModel);
+    }, []);
+
+    const onFilterModelChange = useCallback((filterModel: GridFilterModel) => {
+        setTemplatesFilterModel(filterModel);
+    }, []);
+
+    const onPaginationModelChange = useCallback((paginationModel: GridPaginationModel) => {
+        setTemplatesPaginationModel(paginationModel);
+    }, []);
+
+    const {data: templates}: UseQueryResult<TemplatePagingModelListing, AxiosError> = useQuery(searchTemplatesQueryOptions(templatesRequest));
+
     return (
         <Fragment>
             <Box
@@ -60,7 +79,7 @@ const TemplateConfigs: () => ReactNode = (): ReactNode => {
                 paddingBottom={15}>
                 <Paper>
                     <Box padding={3}>
-                        <ConfigHeader
+                        <PageHeader
                             icon={
                                 <Fragment>
                                     <EditNoteRounded
@@ -79,7 +98,6 @@ const TemplateConfigs: () => ReactNode = (): ReactNode => {
                                             startIcon={<AddIcon/>}
                                             variant={"outlined"}
                                             onClick={async (): Promise<void> => {
-                                                updateTemplateId(undefined);
                                                 navigate("/configs/templates/create")
                                             }}
                                             color={"primary"}>
@@ -113,15 +131,20 @@ const TemplateConfigs: () => ReactNode = (): ReactNode => {
                             filterModel={templatesFilterModel}
                             paginationModel={templatesPaginationModel}
                             onSortModelChange={(sortModel: GridSortModel) => {
-                                onSortModelChange(sortModel, false, true, false, false, false);
+                                onSortModelChange(sortModel);
                             }}
                             onFilterModelChange={(filterModel: GridFilterModel) => {
-                                onFilterModelChange(filterModel, false, true, false, false, false);
+                                onFilterModelChange(filterModel);
                             }}
                             onPaginationModelChange={(paginationModel: GridPaginationModel) => {
-                                onPaginationModelChange(paginationModel, false, true, false, false, false);
+                                onPaginationModelChange(paginationModel);
                             }}
-                            onRowClick={(params: GridRowParams<TemplateListing>): void => navigate(`/configs/templates/${params.row.id}`)}
+                            onRowClick={(params: GridRowParams<TemplateListing>): void => {
+                                if (params.row.id) {
+                                    publishEntityMessage(params.row.id, "templates")
+                                    navigate(`/configs/templates/${params.row.id}`);
+                                }
+                            }}
                             pageSizeOptions={[10, 25, 50, 100]}
                         />
                     </Box>

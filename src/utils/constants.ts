@@ -1,4 +1,3 @@
-import {ISettings} from "../model/ISettings.ts";
 import {GridFilterModel, GridPaginationModel, GridSortModel} from "@mui/x-data-grid";
 import {EAlgorithm} from "../model/EAlgorithm.ts";
 
@@ -16,14 +15,6 @@ export const BLOCKS_KEY: string = "blocks";
 export const PROGRAMS_KEY: string = "programs";
 export const ATTACHMENTS_KEY: string = "attachments";
 export const TEMPLATES_KEY: string = "templates";
-
-export const DEFAULT_SETTINGS: ISettings = {
-    executionBasePath: "http://localhost:8200",
-    configBasePath: "http://localhost:8100",
-    websocketPath: "ws://localhost:8100/ws",
-    version: "v1",
-    silentMode: false
-};
 
 export const INVALIDATION_KEYS: any = {
     [WORKFLOWS_KEY]: [EXECUTIONS_KEY, WORKFLOWS_KEY, BLOCKS_KEY, TEMPLATES_KEY, PROGRAMS_KEY, ATTACHMENTS_KEY],

@@ -7,7 +7,7 @@ import {getPath} from "../../../utils/layout/utils.ts";
 import {Theme, useTheme} from "@mui/material";
 import {IEditorContext} from "../../../provider/EditorProvider.tsx";
 import {EAlgorithm} from "../../../model/EAlgorithm.ts";
-import {EditorContext} from "../../../provider/IEditorContext.tsx";
+import {EditorContext} from "../../../provider/EditorContext.tsx";
 
 const DISTANCE: number = DEFAULT_ALGORITHM === EAlgorithm.BezierCatmullRom ? 50 : 25;
 

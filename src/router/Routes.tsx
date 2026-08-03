@@ -24,10 +24,6 @@ import ProgramConfigs from "../pages/configs/program/ProgramConfigs.tsx";
 import ProgramConfigsDetail from "../pages/configs/program/ProgramConfigsDetail.tsx";
 import AttachmentConfigs from "../pages/configs/attachment/AttachmentConfigs.tsx";
 import AttachmentConfigsDetail from "../pages/configs/attachment/AttachmentConfigsDetail.tsx";
-import TemplateConfigsImport from "../pages/configs/template/TemplateConfigsImport.tsx";
-import ProgramConfigsImport from "../pages/configs/program/ProgramConfigsImport.tsx";
-import AttachmentConfigsImport from "../pages/configs/attachment/AttachmentConfigsImport.tsx";
-import WorkflowConfigsImport from "../pages/configs/workflow/WorkflowConfigsImport.tsx";
 
 export const getRoutes: (t: TFunction) => IRoute[] = (t: TFunction): IRoute[] => {
 
@@ -153,13 +149,13 @@ export const getRoutes: (t: TFunction) => IRoute[] = (t: TFunction): IRoute[] =>
                     element: <WorkflowConfigs/>,
                     icon: <EditNoteRounded color={"primary"}/>,
                     menu: {
-                        1: true,
-                        2: true
+                        1: false,
+                        2: false
                     },
                     children: []
                 },
                 {
-                    index: true,
+                    index: false,
                     name: t("page.header.configs.workflow"),
                     displayPath: "/configs/workflows",
                     routingPath: "/configs/workflows/:workflowId",
@@ -169,20 +165,6 @@ export const getRoutes: (t: TFunction) => IRoute[] = (t: TFunction): IRoute[] =>
                     menu: {
                         1: true,
                         2: true
-                    },
-                    children: []
-                },
-                {
-                    index: true,
-                    name: t("page.header.config.importWorkflow"),
-                    displayPath: "/configs/workflows/import",
-                    routingPath: "/configs/workflows/import",
-                    description: "",
-                    element: <WorkflowConfigsImport/>,
-                    icon: <EditNoteRounded color={"primary"}/>,
-                    menu: {
-                        1: false,
-                        2: false,
                     },
                     children: []
                 },
@@ -201,7 +183,7 @@ export const getRoutes: (t: TFunction) => IRoute[] = (t: TFunction): IRoute[] =>
                     children: []
                 },
                 {
-                    index: true,
+                    index: false,
                     name: t("page.header.configs.block"),
                     displayPath: "/configs/blocks",
                     routingPath: "/configs/blocks/:blockId",
@@ -229,7 +211,7 @@ export const getRoutes: (t: TFunction) => IRoute[] = (t: TFunction): IRoute[] =>
                     children: []
                 },
                 {
-                    index: true,
+                    index: false,
                     name: t("page.header.configs.template"),
                     displayPath: "/configs/templates",
                     routingPath: "/configs/templates/:templateId",
@@ -237,13 +219,13 @@ export const getRoutes: (t: TFunction) => IRoute[] = (t: TFunction): IRoute[] =>
                     element: <TemplateConfigsDetail/>,
                     icon: <EditNoteRounded color="primary"/>,
                     menu: {
-                        1: true,
-                        2: true
+                        1: false,
+                        2: false
                     },
                     children: []
                 },
                 {
-                    index: true,
+                    index: false,
                     name: t("page.header.config.createTemplate"),
                     displayPath: "/configs/templates/create",
                     routingPath: "/configs/templates/create",
@@ -251,22 +233,8 @@ export const getRoutes: (t: TFunction) => IRoute[] = (t: TFunction): IRoute[] =>
                     element: <TemplateConfigsDetail/>,
                     icon: <EditNoteRounded color={"primary"}/>,
                     menu: {
-                        1: true,
-                        2: true,
-                    },
-                    children: []
-                },
-                {
-                    index: true,
-                    name: t("page.header.config.importTemplate"),
-                    displayPath: "/configs/templates/import",
-                    routingPath: "/configs/templates/import",
-                    description: "",
-                    element: <TemplateConfigsImport/>,
-                    icon: <EditNoteRounded color={"primary"}/>,
-                    menu: {
                         1: false,
-                        2: false,
+                        2: false
                     },
                     children: []
                 },
@@ -285,7 +253,7 @@ export const getRoutes: (t: TFunction) => IRoute[] = (t: TFunction): IRoute[] =>
                     children: []
                 },
                 {
-                    index: true,
+                    index: false,
                     name: t("page.header.configs.program"),
                     displayPath: "/configs/programs",
                     routingPath: "/configs/programs/:programId",
@@ -293,13 +261,13 @@ export const getRoutes: (t: TFunction) => IRoute[] = (t: TFunction): IRoute[] =>
                     element: <ProgramConfigsDetail/>,
                     icon: <EditNoteRounded color={"primary"}/>,
                     menu: {
-                        1: true,
-                        2: true
+                        1: false,
+                        2: false
                     },
                     children: []
                 },
                 {
-                    index: true,
+                    index: false,
                     name: t("page.header.configs.createProgram"),
                     displayPath: "/configs/programs/create",
                     routingPath: "/configs/programs/create",
@@ -307,22 +275,8 @@ export const getRoutes: (t: TFunction) => IRoute[] = (t: TFunction): IRoute[] =>
                     element: <ProgramConfigsDetail/>,
                     icon: <EditNoteRounded color={"primary"}/>,
                     menu: {
-                        1: true,
-                        2: true
-                    },
-                    children: []
-                },
-                {
-                    index: true,
-                    name: t("page.header.configs.importProgram"),
-                    displayPath: "/configs/programs/import",
-                    routingPath: "/configs/programs/import",
-                    description: "",
-                    element: <ProgramConfigsImport/>,
-                    icon: <EditNoteRounded color={"primary"}/>,
-                    menu: {
-                        1: true,
-                        2: true
+                        1: false,
+                        2: false
                     },
                     children: []
                 },
@@ -341,7 +295,7 @@ export const getRoutes: (t: TFunction) => IRoute[] = (t: TFunction): IRoute[] =>
                     children: []
                 },
                 {
-                    index: true,
+                    index: false,
                     name: t("page.header.configs.attachment"),
                     displayPath: "/configs/attachments",
                     routingPath: "/configs/attachments/:attachmentId",
@@ -349,13 +303,13 @@ export const getRoutes: (t: TFunction) => IRoute[] = (t: TFunction): IRoute[] =>
                     element: <AttachmentConfigsDetail/>,
                     icon: <EditNoteRounded color={"primary"}/>,
                     menu: {
-                        1: true,
-                        2: true
+                        1: false,
+                        2: false
                     },
                     children: []
                 },
                 {
-                    index: true,
+                    index: false,
                     name: t("page.header.configs.createAttachment"),
                     displayPath: "/configs/attachments/create",
                     routingPath: "/configs/attachments/create",
@@ -363,25 +317,11 @@ export const getRoutes: (t: TFunction) => IRoute[] = (t: TFunction): IRoute[] =>
                     element: <AttachmentConfigsDetail/>,
                     icon: <EditNoteRounded color={"primary"}/>,
                     menu: {
-                        1: true,
-                        2: true
+                        1: false,
+                        2: false
                     },
                     children: []
                 },
-                {
-                    index: true,
-                    name: t("page.header.configs.importAttachment"),
-                    displayPath: "/configs/attachments/import",
-                    routingPath: "/configs/attachments/import",
-                    description: "",
-                    element: <AttachmentConfigsImport/>,
-                    icon: <EditNoteRounded color={"primary"}/>,
-                    menu: {
-                        1: true,
-                        2: true
-                    },
-                    children: []
-                }
             ]
         },
         {

@@ -42,7 +42,7 @@ import {
     OutputDetail,
     TemplateDetail,
     WorkflowDetail
-} from "@kit-iai-proof/proof-config-manager-client";
+} from "@webis/proof-config-manager-client";
 import {convertWorkflow, getNextAvailableIndex, makeEdge, makeNode} from "../utils/storage/inboundConverter.ts";
 import {TWorkflow} from "../model/TWorkflow.ts";
 import useHistory from "../hooks/useHistory.ts";
@@ -50,18 +50,21 @@ import {getHelperLines} from "../utils/lines.ts";
 import {getDagreLayoutedElements} from "../utils/layout/layout.ts";
 import {TEdge} from "../model/TEdge.ts";
 import {BlockEdge} from "../pages/editor/components/BlockEdge.tsx";
-import {UseMutationResult} from "@tanstack/react-query";
 import {Provider} from "../types/provider.ts";
-import {UseWorkflows, useWorkflows} from "../hooks/storage/useWorkflows.ts";
-import {UseTemplates, useTemplates} from "../hooks/storage/useTemplates.ts";
-import {useWebSocket} from "../hooks/useWebSocket.ts";
-import {EditorContext} from "./IEditorContext.tsx";
+import {EditorContext} from "./EditorContext.tsx";
 import {AppContext} from "./AppContext.tsx";
 import {IAppContext} from "./AppProvider.tsx";
 import {HandleSchema, HandleType} from "../types/handle.ts";
-import {useBlocks} from "../hooks/storage/useBlocks.ts";
 import {convertRemoteBlocks, convertRemoteEdges} from "../utils/storage/outboundConverter.ts";
 import {useTranslation} from "react-i18next";
+import {useMutation, UseMutationResult, useQuery, useQueryClient, UseQueryResult} from "@tanstack/react-query";
+import {AxiosError} from "axios";
+import {blockService, workflowService} from "../services/instances.ts";
+import {v4 as uuidv4} from "uuid";
+import {BLOCKS_KEY, ENTITY_TYPES, INVALIDATION_KEYS, WORKFLOWS_KEY} from "../utils/constants.ts";
+import {getErrorMessage} from "../utils/error.ts";
+import {templatesQueryOptions} from "../query/options/templateQueryOptions.tsx";
+import {useNotification} from "../hooks/useNotification.ts";
 
 interface IProps {
     children: ReactNode;
@@ -80,81 +83,130 @@ export interface IEditorContext {
     onEdgesDelete: OnEdgesDelete;
     nodeTypes: NodeTypes;
     edgeTypes: EdgeTypes;
-    workflows: WorkflowDetail[] | undefined;
     outdatedBlocks: BlockDetail[];
     changedBlocks: BlockDetail[];
-    differingParameters: string | undefined;
-    template: TemplateDetail | undefined;
-    templates: TemplateDetail[] | undefined;
-    workflow: WorkflowDetail | undefined;
+    differingParameters: Record<string, string>;
     helperLineHorizontal: number | undefined;
     helperLineVertical: number | undefined;
     undo: () => void;
     redo: () => void;
     canUndo: boolean;
     canRedo: boolean;
+    template: TemplateDetail | undefined;
     layout: () => void;
     onDrop: DragEventHandler<HTMLDivElement>;
     edited: boolean;
     takeSnapshot: () => void;
-    updateTemplateId: (templateId: string | undefined) => void;
-    updateWorkflowId: (workflowId: string | undefined) => void;
+    updateWorkflow: (workflow: WorkflowDetail) => void;
+    updateTemplate: (template: TemplateDetail) => void;
     connectionLinePath: XYPosition[];
     updateConnectionLinePath: (path: XYPosition[]) => void;
-    workflowsMutation: UseMutationResult<WorkflowDetail, any, WorkflowDetail, void>;
     isConnecting: boolean;
     updateIsConnecting: (isConnecting: boolean) => void;
     wasConnectingRecently: MutableRefObject<boolean>;
     deleteEdge: (edgeId: string) => void;
     deleteNode: (nodeId: string) => void;
     updateNode: (template: TemplateDetail, block: BlockDetail) => void;
+    resetEditor: () => void;
+    connectionErrorMessageVisible: boolean;
+    connectionErrorMessage: string | undefined;
+    connectionErrorMessagePosition: XYPosition | undefined;
 }
 
 const nodeTypes: NodeTypes = {block: BlockNode};
 const edgeTypes: EdgeTypes = {block: BlockEdge};
 
 const EditorProvider: Provider<IProps> = ({children}: IProps): ReactNode => {
+
     const {t} = useTranslation();
-    const {hasUnsavedChanges, updateHasUnsavedChanges, updateLastUsedWorkflowId} = useContext<IAppContext>(AppContext);
+    const {
+        hasUnsavedChanges,
+        updateHasUnsavedChanges,
+        updateLastUsedWorkflowId,
+        sessionKey,
+        updateError
+    } = useContext<IAppContext>(AppContext);
     const [connectionLinePath, setConnectionLinePath] = useState<XYPosition[]>([]);
     const [helperLineHorizontal, setHelperLineHorizontal] = useState<number | undefined>(undefined);
     const [helperLineVertical, setHelperLineVertical] = useState<number | undefined>(undefined);
+    const [workflow, setWorkflow] = useState<WorkflowDetail | undefined>(undefined);
+    const [template, setTemplate] = useState<TemplateDetail | undefined>(undefined);
     const [nodes, setNodes] = useNodesState<TBlock>([]);
     const [edges, setEdges] = useEdgesState<TEdge>([]);
-    const [workflowId, setWorkflowId] = useState<string | undefined>(undefined);
-    const [templateId, setTemplateId] = useState<string | undefined>(undefined);
     const nodesInitialized: boolean = useNodesInitialized({includeHiddenNodes: false});
     const {undo, redo, takeSnapshot, resetHistory, canUndo, canRedo, edited} = useHistory();
+    const queryClient = useQueryClient();
     const {screenToFlowPosition, fitView} = useReactFlow();
     const [isConnecting, setIsConnecting] = useState<boolean>(false);
     const wasConnectingRecently = useRef(false);
     const [outdatedBlocks, setOutdatedBlocks] = useState<BlockDetail[]>([]);
     const [changedBlocks, setChangedBlocks] = useState<BlockDetail[]>([]);
-    const [differingParameters, setDifferingParameters] = useState<string>();
-
-    const [workflows, , workflow, workflowMutation]: UseWorkflows = useWorkflows({
-        workflowId: workflowId,
-        filter: false
+    const [differingParameters, setDifferingParameters] = useState<Record<string, string>>({});
+    const [showConnectionErrorMessage, setShowConnectionErrorMessage] = useState<boolean>(false);
+    const [connectionErrorMessage, setConnectionErrorMessage] = useState<string>();
+    const [connectionErrorMessagePosition, setConnectionErrorMessagePosition] = useState<XYPosition>();
+    const {visible: connectionErrorMessageVisible} = useNotification({
+        showMessage: showConnectionErrorMessage,
+        duration: 4000
     });
 
-    const [templates, , template]: UseTemplates = useTemplates({
-        templateId: templateId,
-        filter: false
+    const {data: templates}: UseQueryResult<TemplateDetail[], AxiosError> = useQuery(templatesQueryOptions());
+
+    const {mutateAsync: blockMutationAsync}: UseMutationResult<BlockDetail, AxiosError, BlockDetail, any> = useMutation({
+        retry: false,
+        mutationFn: async (block: BlockDetail): Promise<BlockDetail> => {
+            if (block.id) return await blockService.updateBlock(block.id, block, undefined, sessionKey);
+            else return await blockService.saveBlock({...block, id: uuidv4()}, undefined, sessionKey);
+        },
+        onMutate: async (): Promise<void> => {
+            return await queryClient.cancelQueries({queryKey: [BLOCKS_KEY]});
+        },
+        onSuccess: async (result: BlockDetail): Promise<void> => {
+            for (const queryKey of INVALIDATION_KEYS[BLOCKS_KEY]) await queryClient.invalidateQueries({
+                queryKey: [queryKey],
+                exact: false
+            });
+            await queryClient.setQueryData([BLOCKS_KEY, result.id], result);
+        },
+        onError: (error: AxiosError): void => {
+            updateError(getErrorMessage(error, ENTITY_TYPES[BLOCKS_KEY], t));
+        }
     });
 
-    const [, , , blockMutation] = useBlocks({
-        filter: true
+    const {mutateAsync: workflowMutationAsync}: UseMutationResult<WorkflowDetail, AxiosError, WorkflowDetail, any> = useMutation({
+        retry: false,
+        mutationFn: async (workflow: WorkflowDetail): Promise<WorkflowDetail> => {
+            if (workflow.id) return await workflowService.updateWorkflow(workflow.id, workflow, undefined, sessionKey);
+            else return await workflowService.saveWorkflow({...workflow, id: uuidv4()}, undefined, sessionKey);
+        },
+        onMutate: async (): Promise<void> => {
+            return await queryClient.cancelQueries({queryKey: [WORKFLOWS_KEY]});
+        },
+        onSuccess: async (result: WorkflowDetail): Promise<void> => {
+            for (const queryKey of INVALIDATION_KEYS[WORKFLOWS_KEY]) await queryClient.invalidateQueries({
+                queryKey: [queryKey],
+                exact: false
+            });
+            await queryClient.setQueryData([WORKFLOWS_KEY, result.id], result);
+        },
+        onError: (error: AxiosError): void => {
+            updateError(getErrorMessage(error, ENTITY_TYPES[WORKFLOWS_KEY], t));
+        }
     });
 
-    const updateWorkflowId: (workflowId: (string | undefined)) => void = useCallback((workflowId: string | undefined): void => {
+    const updateWorkflow: (workflow: WorkflowDetail) => void = useCallback((workflow: WorkflowDetail): void => {
+        setWorkflow(workflow);
+    }, []);
+
+    const resetEditor = useCallback(() => {
+        setWorkflow(undefined);
         setNodes([]);
         setEdges([]);
         resetHistory();
-        setWorkflowId(workflowId);
     }, [resetHistory, setEdges, setNodes]);
 
-    const updateTemplateId: (blockId: (string | undefined)) => void = useCallback((templateId: string | undefined): void => {
-        setTemplateId(templateId);
+    const updateTemplate: (template: TemplateDetail) => void = useCallback((template: TemplateDetail): void => {
+        setTemplate(template);
     }, []);
 
     const updateConnectionLinePath: (path: XYPosition[]) => void = useCallback((path: XYPosition[]): void => {
@@ -191,17 +243,41 @@ const EditorProvider: Provider<IProps> = ({children}: IProps): ReactNode => {
         setEdges((edges: TEdge[]): TEdge[] => applyEdgeChanges(changes, edges));
     }, [setEdges]);
 
+    const showConnectionError = (message: string, position: XYPosition | undefined): void => {
+        setShowConnectionErrorMessage(true);
+        setTimeout(() => setShowConnectionErrorMessage(false), 4000);
+        setConnectionErrorMessage(message);
+        setConnectionErrorMessagePosition(position);
+    }
+
     const isValidConnection: IsValidConnection = (connection: (Connection | any)) => {
+        setShowConnectionErrorMessage(false)
         const sourceNode: TBlock | undefined = nodes.find((node) => node.id === connection.source);
         const targetNode: TBlock | undefined = nodes.find((node) => node.id === connection.target);
         const output: OutputDetail | undefined =
             sourceNode?.data?.outputs?.find((handle: OutputDetail): boolean => handle.id === connection.sourceHandle);
         const input: InputDetail | undefined =
             targetNode?.data?.inputs?.find((handle: InputDetail): boolean => handle.id === connection.targetHandle);
-        if (input?.communicationType?.toString().includes('STATIC') || output?.communicationType?.toString().includes("STATIC") || !input || !output)
+        if (!input) {
+            showConnectionError(t("message.outputToOutputConnectionNotAllowed"), targetNode?.position);
+            return false;
+        }
+        if (!output) {
+            showConnectionError(t("message.inputToInputConnectionNotAllowed"), targetNode?.position);
+            return false;
+        }
+        if (input?.communicationType?.toString().includes('STATIC') || output?.communicationType?.toString().includes("STATIC")) {
+            showConnectionError(t("message.staticConnectionNotAllowed"), targetNode?.position)
             return false
+        }
         const usedInput = edges.find((edge) => edge.targetHandle === connection.targetHandle);
-        if (usedInput) return false;
+        if (usedInput) {
+            showConnectionError(t("message.outputAlreadyUsed"), targetNode?.position);
+            return false;
+        }
+        if (input?.type !== output?.type) {
+            showConnectionError(t("message.connectionTypeMismatch"), targetNode?.position);
+        }
         return input?.type === output?.type;
     }
 
@@ -238,7 +314,7 @@ const EditorProvider: Provider<IProps> = ({children}: IProps): ReactNode => {
         requestAnimationFrame((): Promise<boolean> => fitView({duration: 250, includeHiddenNodes: true}));
     }, [takeSnapshot, hasUnsavedChanges, updateHasUnsavedChanges, nodes, edges, setNodes, setEdges, fitView]);
 
-    const onDrop: DragEventHandler = useCallback((event: DragEvent): void => {
+    const onDrop: DragEventHandler = useCallback((event: DragEvent<HTMLDivElement>): void => {
         takeSnapshot();
         if (!hasUnsavedChanges) updateHasUnsavedChanges(true);
         const position: XYPosition = screenToFlowPosition({x: event.clientX, y: event.clientY});
@@ -284,7 +360,7 @@ const EditorProvider: Provider<IProps> = ({children}: IProps): ReactNode => {
                 template.outputs!.map(({id, ...rest}) => rest) : block.outputs,
         }
 
-        await blockMutation.mutateAsync(updatedBlock);
+        await blockMutationAsync(updatedBlock);
 
         if (templateInputsChanged || templateOutputsChanged) {
             const newEdges: TEdge[] = edges.filter((e: TEdge): boolean => e.source !== block.id && e.target !== block.id);
@@ -293,13 +369,13 @@ const EditorProvider: Provider<IProps> = ({children}: IProps): ReactNode => {
                     ? {...node, data: updatedBlock as any}
                     : node
             );
-            workflowMutation.mutateAsync({
+            workflowMutationAsync({
                 ...workflow,
                 connections: convertRemoteEdges(newEdges),
                 blocks: convertRemoteBlocks(newNodes)
             }).then();
         }
-    }, [blockMutation, edges, nodes, workflow, workflowMutation])
+    }, [blockMutationAsync, edges, nodes, workflow, workflowMutationAsync])
 
     const stripInputOutput: (array?: (InputDetail[] | OutputDetail[])) => (HandleType[] | undefined) = (array?: InputDetail[] | OutputDetail[]): HandleType[] | undefined => {
         if (!array) return array;
@@ -337,7 +413,7 @@ const EditorProvider: Provider<IProps> = ({children}: IProps): ReactNode => {
             const currentBlocks: BlockDetail[] = []
             const outdatedBlocks: BlockDetail[] = []
             const changedBlocks: BlockDetail[] = []
-            let differentParameters: string = ''
+            const differingParametersRecord: Record<string, string> = {}
             nodes.forEach((node: TBlock) => {
                 const block = workflow.blocks?.find((block: BlockDetail) => block.id === node.id)
                 if (block) currentBlocks.push(block)
@@ -350,7 +426,7 @@ const EditorProvider: Provider<IProps> = ({children}: IProps): ReactNode => {
                         template.description !== block.description ||
                         template.blockType !== block.blockType ||
                         template.communicationParadigm !== block.communicationParadigm ||
-                        template.program === block.program
+                        template.program?.id !== block.program?.id
                     )
                         outdatedBlocks.push(block);
                     if (
@@ -359,9 +435,11 @@ const EditorProvider: Provider<IProps> = ({children}: IProps): ReactNode => {
                         template.shutdownRelevant !== block.shutdownRelevant
                     )
                         changedBlocks.push(block);
-                    if (template.containerImage !== block.containerImage) differentParameters += `${t("word.image")}, `
-                    if (template.syncStrategy !== block.syncStrategy) differentParameters += `${t("word.syncStrategy")}, `
-                    if (template.shutdownRelevant !== block.shutdownRelevant) differentParameters += `${t("word.shutdownRelevant")}, `
+                    const blockParamsList: string[] = []
+                    if (template.containerImage !== block.containerImage) blockParamsList.push(t("word.image"))
+                    if (template.syncStrategy !== block.syncStrategy) blockParamsList.push(t("word.syncStrategy"))
+                    if (template.shutdownRelevant !== block.shutdownRelevant) blockParamsList.push(t("word.shutdownRelevant"))
+                    if (blockParamsList.length > 0 && block.id) differingParametersRecord[block.id] = blockParamsList.join(", ")
                     const strippedTemplateInputs: HandleType[] = stripInputOutput(template.inputs) ?? [];
                     const strippedBlockInputs: HandleType[] = stripInputOutput(block.inputs) ?? [];
 
@@ -380,11 +458,9 @@ const EditorProvider: Provider<IProps> = ({children}: IProps): ReactNode => {
             })
             setOutdatedBlocks(outdatedBlocks);
             setChangedBlocks(changedBlocks);
-            setDifferingParameters(differentParameters);
+            setDifferingParameters(differingParametersRecord);
         }
-    }, [templates, workflow, nodes]);
-
-    useWebSocket({workflow: workflow});
+    }, [templates, workflow, nodes, t]);
 
     return (
         <EditorContext.Provider
@@ -396,25 +472,27 @@ const EditorProvider: Provider<IProps> = ({children}: IProps): ReactNode => {
                 canUndo: canUndo,
                 canRedo: canRedo,
                 edited: edited,
+                template: template,
                 helperLineHorizontal: helperLineHorizontal,
                 helperLineVertical: helperLineVertical,
-                workflow: workflow,
                 outdatedBlocks: outdatedBlocks,
                 changedBlocks: changedBlocks,
                 differingParameters: differingParameters,
-                workflows: workflows,
-                template: template,
-                templates: templates,
-                workflowsMutation: workflowMutation,
                 connectionLinePath: connectionLinePath,
+                isConnecting: isConnecting,
+                wasConnectingRecently: wasConnectingRecently,
+                connectionErrorMessageVisible: connectionErrorMessageVisible,
+                connectionErrorMessage: connectionErrorMessage,
+                connectionErrorMessagePosition: connectionErrorMessagePosition,
+                resetEditor: resetEditor,
+                updateTemplate: updateTemplate,
                 onDrop: onDrop,
                 deleteEdge: deleteEdge,
                 deleteNode: deleteNode,
                 updateNode: updateNode,
-                isConnecting,
-                wasConnectingRecently,
                 updateConnectionLinePath: updateConnectionLinePath,
                 layout: onLayout,
+                updateWorkflow: updateWorkflow,
                 isValidConnection: isValidConnection,
                 onConnect: onConnect,
                 onNodesChange: onNodesChange,
@@ -426,8 +504,6 @@ const EditorProvider: Provider<IProps> = ({children}: IProps): ReactNode => {
                 undo: undo,
                 redo: redo,
                 takeSnapshot: takeSnapshot,
-                updateWorkflowId: updateWorkflowId,
-                updateTemplateId: updateTemplateId,
                 updateIsConnecting: updateIsConnecting
             }}
         >

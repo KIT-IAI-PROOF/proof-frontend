@@ -1,9 +1,8 @@
-import React, {ReactNode, useContext, useEffect, useRef} from "react";
+import React, {ReactNode, useEffect, useRef} from "react";
 import {Box, Paper, Stack, Typography} from "@mui/material";
 import {AuthContextProps, useAuth} from "react-oidc-context";
-import {IAppContext} from "../../../provider/AppProvider.tsx";
 import {Client, IMessage} from "@stomp/stompjs";
-import {AppContext} from "../../../provider/AppContext.tsx";
+import {DEFAULT_SETTINGS} from "../../../utils/settings.ts";
 
 interface IProps {
     height?: number | string;
@@ -21,7 +20,6 @@ const LogViewer: React.FC<IProps> = ({height = 500, appId, setMessages, follow, 
     const endRef = useRef<HTMLDivElement | null>(null);
 
     const {user}: AuthContextProps = useAuth();
-    const {settings}: IAppContext = useContext<IAppContext>(AppContext);
 
     useEffect((): () => void => {
         if (user?.access_token && appId) {
@@ -30,7 +28,7 @@ const LogViewer: React.FC<IProps> = ({height = 500, appId, setMessages, follow, 
                 "X-ACCESS_TOKEN": user.access_token
             };
             client.reconnectDelay = 1000;
-            client.brokerURL = settings.websocketPath;
+            client.brokerURL = DEFAULT_SETTINGS.websocketPath;
             client.connectHeaders = headers;
             client.onConnect = (): void => {
                 client.subscribe(
@@ -50,7 +48,7 @@ const LogViewer: React.FC<IProps> = ({height = 500, appId, setMessages, follow, 
             client.deactivate().then(() => {
             });
         };
-    }, [appId, setMessages, settings.websocketPath, user?.access_token]);
+    }, [appId, setMessages, user?.access_token]);
 
     useEffect(() => {
         if (endRef.current) {

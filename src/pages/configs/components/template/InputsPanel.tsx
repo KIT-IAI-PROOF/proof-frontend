@@ -1,28 +1,17 @@
-import React, {
-    ChangeEvent,
-    Dispatch,
-    Fragment,
-    MutableRefObject,
-    ReactNode,
-    SetStateAction,
-    SyntheticEvent,
-    useContext,
-    useMemo,
-} from "react";
-import {
-    InputDetail,
-    InputDetailCommunicationTypeEnum,
-    InputDetailPhaseEnum,
-    InputDetailTypeEnum,
-    OutputDetailPhaseEnum
-} from "@kit-iai-proof/proof-config-manager-client";
+import React, {ChangeEvent, Dispatch, Fragment, MutableRefObject, ReactNode, SetStateAction, SyntheticEvent, useCallback, useContext,} from "react";
+import {InputDetail, InputDetailCommunicationTypeEnum, InputDetailPhaseEnum, InputDetailTypeEnum, OutputDetailPhaseEnum} from "@webis/proof-config-manager-client";
 import {
     Accordion,
     AccordionDetails,
-    AccordionSummary, Alert, Autocomplete, AutocompleteRenderInputParams, Box,
+    AccordionSummary,
+    Alert,
+    Autocomplete,
+    AutocompleteRenderInputParams,
+    Box,
     Button,
     FormControl,
-    FormControlLabel, FormLabel,
+    FormControlLabel,
+    FormLabel,
     InputAdornment,
     InputLabel,
     MenuItem,
@@ -40,18 +29,15 @@ import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import {IAppContext} from "../../../../provider/AppProvider.tsx";
 import {AppContext} from "../../../../provider/AppContext.tsx";
 import {useTranslation} from "react-i18next";
-import {Info, UploadRounded} from "@mui/icons-material";
+import {Info} from "@mui/icons-material";
 import {useQuery} from "@tanstack/react-query";
-import FileService from "../../../../services/FileService.ts";
-import {useAuth} from "react-oidc-context";
 import CodeMirror from "@uiw/react-codemirror";
 import {json} from "@codemirror/lang-json";
 import {jsonSyntaxLinter} from "../../../../utils/linter/jsonSyntaxLinter.ts";
 import {EditorView} from "@codemirror/view";
 import {oneDark} from "@codemirror/theme-one-dark";
 import {githubLight} from "@uiw/codemirror-theme-github";
-import {IConfigContext} from "../../../../provider/ConfigProvider.tsx";
-import {ConfigContext} from "../../../../provider/IConfigContext.tsx";
+import {fileService} from "../../../../services/instances.ts";
 
 interface IProps {
     inputs: InputDetail[] | undefined;
@@ -61,6 +47,8 @@ interface IProps {
     inputLabelsError: Record<string, string> | undefined;
     inputModelVarNamesError: Record<string, boolean> | undefined
     accordionRefs: MutableRefObject<Record<number, HTMLDivElement | null>>;
+    jsonError: Record<string, string | undefined>;
+    setJsonError: Dispatch<SetStateAction<Record<string, string | undefined>>>;
 }
 
 const InputsPanel = ({
@@ -68,18 +56,23 @@ const InputsPanel = ({
                          inputLabelsError,
                          inputModelVarNamesError,
                          setInputs,
+                         jsonError,
+                         setJsonError,
                          inputPanelExpanded,
                          setInputPanelExpanded,
                          accordionRefs
                      }: IProps) => {
+
     const {t} = useTranslation();
     const theme: Theme = useTheme();
-    const {user} = useAuth();
-    const {settings} = useContext<IAppContext>(AppContext);
     const {hasUnsavedChanges, updateHasUnsavedChanges} = useContext<IAppContext>(AppContext);
-    const {jsonError, updateJsonError} = useContext<IConfigContext>(ConfigContext);
 
-    const fileService = useMemo(() => new FileService(settings.configBasePath, user?.access_token), [settings.configBasePath, user?.access_token]);
+    const updateJsonError: (key: string, value: string | undefined) => void = useCallback((key: string, value: string | undefined): void => {
+        setJsonError((prevState: { [p: string]: string | undefined }): { [p: string]: string | undefined } => ({
+            ...prevState,
+            [key]: value
+        }))
+    }, [setJsonError]);
 
     const {data: files} = useQuery({
         queryKey: ['files'],
@@ -392,7 +385,8 @@ const InputsPanel = ({
                                                 setInputs(inputs!.map((th: InputDetail, i): InputDetail =>
                                                     index === i ? {
                                                         ...th,
-                                                        defaultValue: !handleCommunicationType.includes("STATIC") ? undefined : handle.defaultValue,
+                                                        startValue: handleCommunicationType.includes("STATIC") ? undefined : th.startValue,
+                                                        defaultValue: (handleCommunicationType.includes("STATIC") && handle.required) ? undefined : handle.defaultValue,
                                                         communicationType: handleCommunicationType as InputDetailCommunicationTypeEnum
                                                     } : th
                                                 ));
@@ -477,10 +471,10 @@ const InputsPanel = ({
                                         </Select>
                                     </FormControl>
                                 </Stack>
-                                {!handle.required && handle.communicationType?.includes("STATIC") &&
+                                {handle.communicationType !== InputDetailCommunicationTypeEnum.StepbasedStatic &&
                                     <Stack direction={"row"}>
                                         <InputAdornment position={"start"}>
-                                            <Tooltip title={t("tooltip.defaultValue")}>
+                                            <Tooltip title={t("tooltip.startValue")}>
                                                 <Info
                                                     fontSize={"small"}
                                                     sx={{ml: 1, cursor: "pointer"}}
@@ -489,55 +483,203 @@ const InputsPanel = ({
                                         </InputAdornment>
 
                                         {(handle.type === InputDetailTypeEnum.String || handle.type === InputDetailTypeEnum.Float || handle.type === InputDetailTypeEnum.Integer) &&
-                                            <TextField
-                                                type={handle.type === InputDetailTypeEnum.Integer || handle.type === InputDetailTypeEnum.Float ? "number" : "text"}
-                                                sx={{pb: 2}}
+                                        <TextField
+                                            type={handle.type === InputDetailTypeEnum.Integer || handle.type === InputDetailTypeEnum.Float ? "number" : "text"}
+                                            sx={{pb: 2}}
+                                            size={"small"}
+                                            fullWidth={true}
+                                            label={t("word.startValue")}
+                                            value={handle.startValue ?? ""}
+                                            variant="outlined"
+                                            required={false}
+                                            onChange={(event: ChangeEvent<HTMLTextAreaElement | HTMLInputElement>): void => {
+                                                const startValue: string = event.target.value;
+                                                setInputs(inputs!.map((th: InputDetail, i): InputDetail =>
+                                                    index === i ? {
+                                                        ...th,
+                                                        startValue: startValue
+                                                    } : th
+                                                ));
+                                                if (!hasUnsavedChanges) updateHasUnsavedChanges(true)
+                                            }}
+                                        />
+                                    }
+                                    {
+                                        handle.type === InputDetailTypeEnum.FileName &&
+                                        <Stack spacing={1} flex={1} direction={"row"} alignItems={"center"}
+                                               justifyContent={"center"} paddingBottom={2}>
+                                            <Autocomplete
                                                 size={"small"}
                                                 fullWidth={true}
-                                                label={t("word.defaultValue")}
-                                                value={handle.defaultValue ?? ""}
-                                                variant="outlined"
-                                                required={false}
-                                                onChange={(event: ChangeEvent<HTMLTextAreaElement | HTMLInputElement>): void => {
-                                                    const defaultValue: string = event.target.value;
+                                                freeSolo={true}
+                                                multiple={false}
+                                                value={handle.startValue ?? ""}
+                                                options={files ?? []}
+                                                onChange={(_event: SyntheticEvent<Element, Event>, value: string | null): void => {
                                                     setInputs(inputs!.map((th: InputDetail, i): InputDetail =>
                                                         index === i ? {
                                                             ...th,
-                                                            defaultValue: defaultValue
+                                                            startValue: value ?? undefined
                                                         } : th
                                                     ));
                                                     if (!hasUnsavedChanges) updateHasUnsavedChanges(true)
                                                 }}
+                                                renderInput={(params: AutocompleteRenderInputParams) =>
+                                                    <TextField
+                                                        label={t("word.startValue")}
+                                                        {...params}
+                                                        required={false}
+                                                    />
+                                                }
                                             />
-                                        }
-                                        {
-                                            handle.type === InputDetailTypeEnum.FileName &&
-                                            <Stack spacing={1} flex={1} direction={"row"} alignItems={"center"}
-                                                   justifyContent={"center"} paddingBottom={2}>
-                                                <Autocomplete
-                                                    size={"small"}
-                                                    fullWidth={true}
-                                                    freeSolo={true}
-                                                    multiple={false}
-                                                    value={handle.defaultValue ?? ""}
-                                                    options={files ?? []}
-                                                    onChange={(_event: SyntheticEvent<Element, Event>, value: string | null): void => {
+                                            <Stack direction={"row"} alignItems={"center"}>
+                                                <input
+                                                    id={"file-start"}
+                                                    type={"file"}
+                                                    onChange={async (event: any): Promise<void> => {
+                                                        const file: File = event.target.files[0];
+                                                        const result: string = await fileService.uploadFile(file, "userdata", undefined);
                                                         setInputs(inputs!.map((th: InputDetail, i): InputDetail =>
                                                             index === i ? {
                                                                 ...th,
-                                                                defaultValue: value ?? undefined
+                                                                startValue: result ?? undefined
                                                             } : th
                                                         ));
                                                         if (!hasUnsavedChanges) updateHasUnsavedChanges(true)
                                                     }}
-                                                    renderInput={(params: AutocompleteRenderInputParams) =>
-                                                        <TextField
-                                                            label={t("word.defaultValue")}
-                                                            {...params}
-                                                            required={false}
-                                                        />
-                                                    }
+                                                    multiple={false}
+                                                    style={{display: "none"}}
                                                 />
+                                                <label
+                                                    htmlFor={"file-start"}
+                                                    style={{
+                                                        cursor: "pointer",
+                                                        color: theme.palette.primary.main,
+                                                        border: "1px solid " + theme.palette.primary.main,
+                                                        padding: "5px 20px",
+                                                        borderRadius: "4px",
+                                                        alignItems: "center",
+                                                        justifyContent: "center",
+                                                    }}
+                                                >
+                                                    <Stack direction={"row"} spacing={1}>
+                                                        <Typography variant={"body1"}>
+                                                            Browse...
+                                                        </Typography>
+                                                    </Stack>
+                                                </label>
+                                            </Stack>
+                                        </Stack>
+                                    }
+                                    {
+                                        (handle.type === InputDetailTypeEnum.Object || handle.type === InputDetailTypeEnum.ObjectArray || handle.type === InputDetailTypeEnum.StringArray || handle.type === InputDetailTypeEnum.IntegerArray || handle.type === InputDetailTypeEnum.FloatArray) &&
+                                        <FormControl
+                                            fullWidth={true}
+                                            required={false}
+                                        >
+                                            <FormLabel>{t("word.startValue")}</FormLabel>
+                                            <CodeMirror
+                                                value={handle.startValue ?? ""}
+                                                extensions={[json(), jsonSyntaxLinter(t, handle.type), EditorView.lineWrapping]}
+                                                onChange={(value: string): void => {
+                                                    try {
+                                                        JSON.parse(value)
+                                                        updateJsonError(handle.id!, undefined);
+                                                    } catch (error) {
+                                                        if (error instanceof SyntaxError)
+                                                            updateJsonError(handle.id!, error.message);
+                                                    }
+                                                    if (value === "")
+                                                        updateJsonError(handle.id!, undefined);
+                                                    if (value !== '') {
+                                                        setInputs(inputs!.map((th: InputDetail, i): InputDetail =>
+                                                            index === i ? {
+                                                                ...th,
+                                                                startValue: value ?? undefined
+                                                            } : th
+                                                        ));
+                                                        if (!hasUnsavedChanges) updateHasUnsavedChanges(true)
+                                                    }
+                                                }}
+                                                theme={theme.palette.mode === "dark" ? oneDark : githubLight}
+                                            >
+                                            </CodeMirror>
+                                            <Box paddingBottom={2}>
+                                                {
+                                                    jsonError[handle.id!] &&
+                                                    <Alert severity={"warning"}>
+                                                        {jsonError[handle.id!]}
+                                                    </Alert>
+                                                }
+                                            </Box>
+                                        </FormControl>
+                                    }
+                                    </Stack>
+                                }
+                                <Stack direction={"row"}>
+                                    <InputAdornment position={"start"}>
+                                        <Tooltip title={t("tooltip.defaultValue")}>
+                                            <Info
+                                                fontSize={"small"}
+                                                sx={{ml: 1, cursor: "pointer"}}
+                                            />
+                                        </Tooltip>
+                                    </InputAdornment>
+
+                                    {(handle.type === InputDetailTypeEnum.String || handle.type === InputDetailTypeEnum.Float || handle.type === InputDetailTypeEnum.Integer) &&
+                                        <TextField
+                                            type={handle.type === InputDetailTypeEnum.Integer || handle.type === InputDetailTypeEnum.Float ? "number" : "text"}
+                                            sx={{pb: 2}}
+                                            size={"small"}
+                                            fullWidth={true}
+                                            label={t("word.defaultValue")}
+                                            value={handle.defaultValue ?? ""}
+                                            variant="outlined"
+                                            required={handle.communicationType === InputDetailCommunicationTypeEnum.StepbasedStatic && !handle.required}
+                                            error={handle.communicationType === InputDetailCommunicationTypeEnum.StepbasedStatic && !handle.required && !handle.defaultValue}
+                                            helperText={handle.communicationType === InputDetailCommunicationTypeEnum.StepbasedStatic && !handle.required && !handle.defaultValue ? t("word.required") : ""}
+                                            onChange={(event: ChangeEvent<HTMLTextAreaElement | HTMLInputElement>): void => {
+                                                const defaultValue: string = event.target.value;
+                                                setInputs(inputs!.map((th: InputDetail, i): InputDetail =>
+                                                    index === i ? {
+                                                        ...th,
+                                                        defaultValue: defaultValue
+                                                    } : th
+                                                ));
+                                                if (!hasUnsavedChanges) updateHasUnsavedChanges(true)
+                                            }}
+                                        />
+                                    }
+                                    {
+                                        handle.type === InputDetailTypeEnum.FileName &&
+                                        <Stack spacing={1} flex={1} direction={"row"} alignItems={"center"}
+                                               justifyContent={"center"} paddingBottom={2}>
+                                            <Autocomplete
+                                                size={"small"}
+                                                fullWidth={true}
+                                                freeSolo={true}
+                                                multiple={false}
+                                                value={handle.defaultValue ?? ""}
+                                                options={files ?? []}
+                                                onChange={(_event: SyntheticEvent<Element, Event>, value: string | null): void => {
+                                                    setInputs(inputs!.map((th: InputDetail, i): InputDetail =>
+                                                        index === i ? {
+                                                            ...th,
+                                                            defaultValue: value ?? undefined
+                                                        } : th
+                                                    ));
+                                                    if (!hasUnsavedChanges) updateHasUnsavedChanges(true)
+                                                }}
+                                                renderInput={(params: AutocompleteRenderInputParams) =>
+                                                    <TextField
+                                                        label={t("word.defaultValue")}
+                                                        {...params}
+                                                        required={handle.communicationType === InputDetailCommunicationTypeEnum.StepbasedStatic && !handle.required}
+                                                        error={handle.communicationType === InputDetailCommunicationTypeEnum.StepbasedStatic && !handle.required && !handle.defaultValue}
+                                                        helperText={handle.communicationType === InputDetailCommunicationTypeEnum.StepbasedStatic && !handle.required && !handle.defaultValue ? t("word.required") : ""}
+                                                    />
+                                                }
+                                            />
                                                 <Stack direction={"row"} alignItems={"center"}>
                                                     <input
                                                         id={"file"}
@@ -569,61 +711,66 @@ const InputsPanel = ({
                                                         }}
                                                     >
                                                         <Stack direction={"row"} spacing={1}>
-                                                            <UploadRounded/>
                                                             <Typography variant={"body1"}>
-                                                                Upload
+                                                                Browse...
                                                             </Typography>
                                                         </Stack>
                                                     </label>
                                                 </Stack>
                                             </Stack>
                                         }
-                                        {
-                                            (handle.type === InputDetailTypeEnum.Object || handle.type === InputDetailTypeEnum.ObjectArray || handle.type === InputDetailTypeEnum.StringArray || handle.type === InputDetailTypeEnum.IntegerArray || handle.type === InputDetailTypeEnum.FloatArray) &&
-                                            <FormControl
-                                                fullWidth={true}
-                                                required={false}
-                                            >
-                                                <FormLabel>{t("word.defaultValue")}</FormLabel>
-                                                <CodeMirror
-                                                    value={handle.defaultValue ?? ""}
-                                                    extensions={[json(), jsonSyntaxLinter(t, handle.type), EditorView.lineWrapping]}
-                                                    onChange={(value: string): void => {
-                                                        try {
-                                                            JSON.parse(value)
-                                                            updateJsonError(handle.id!, undefined);
-                                                        } catch (error) {
-                                                            if (error instanceof SyntaxError)
-                                                                updateJsonError(handle.id!, error.message);
-                                                        }
-                                                        if (value === "")
-                                                            updateJsonError(handle.id!, undefined);
-                                                        if (value !== '') {
-                                                            setInputs(inputs!.map((th: InputDetail, i): InputDetail =>
-                                                                index === i ? {
-                                                                    ...th,
-                                                                    defaultValue: value ?? undefined
-                                                                } : th
-                                                            ));
-                                                            if (!hasUnsavedChanges) updateHasUnsavedChanges(true)
-                                                        }
-                                                    }}
-                                                    theme={theme.palette.mode === "dark" ? oneDark : githubLight}
-                                                >
-
-                                                </CodeMirror>
-                                                <Box paddingBottom={2}>
-                                                    {
-                                                        jsonError[handle.id!] &&
-                                                        <Alert severity={"warning"}>
-                                                            {jsonError[handle.id!]}
-                                                        </Alert>
+                                    {
+                                        (handle.type === InputDetailTypeEnum.Object || handle.type === InputDetailTypeEnum.ObjectArray || handle.type === InputDetailTypeEnum.StringArray || handle.type === InputDetailTypeEnum.IntegerArray || handle.type === InputDetailTypeEnum.FloatArray) &&
+                                        <FormControl
+                                            fullWidth={true}
+                                            required={false}
+                                            error={handle.communicationType === InputDetailCommunicationTypeEnum.StepbasedStatic && !handle.required && !handle.defaultValue}
+                                        >
+                                            <FormLabel>{t("word.defaultValue")}</FormLabel>
+                                            <CodeMirror
+                                                value={handle.defaultValue ?? ""}
+                                                extensions={[json(), jsonSyntaxLinter(t, handle.type), EditorView.lineWrapping]}
+                                                onChange={(value: string): void => {
+                                                    try {
+                                                        JSON.parse(value)
+                                                        updateJsonError(handle.id!, undefined);
+                                                    } catch (error) {
+                                                        if (error instanceof SyntaxError)
+                                                            updateJsonError(handle.id!, error.message);
                                                     }
-                                                </Box>
-                                            </FormControl>
-                                        }
-                                    </Stack>
-                                }
+                                                    if (value === "")
+                                                        updateJsonError(handle.id!, undefined);
+                                                    if (value !== '') {
+                                                        setInputs(inputs!.map((th: InputDetail, i): InputDetail =>
+                                                            index === i ? {
+                                                                ...th,
+                                                                defaultValue: value ?? undefined
+                                                            } : th
+                                                        ));
+                                                        if (!hasUnsavedChanges) updateHasUnsavedChanges(true)
+                                                    }
+                                                }}
+                                                theme={theme.palette.mode === "dark" ? oneDark : githubLight}
+                                            >
+
+                                            </CodeMirror>
+                                            <Box paddingBottom={2}>
+                                                {
+                                                    jsonError[handle.id!] &&
+                                                    <Alert severity={"warning"}>
+                                                        {jsonError[handle.id!]}
+                                                    </Alert>
+                                                }
+                                                {
+                                                    handle.communicationType === InputDetailCommunicationTypeEnum.StepbasedStatic && !handle.required && !handle.defaultValue &&
+                                                    <Alert severity={"error"}>
+                                                        {t("word.required")}
+                                                    </Alert>
+                                                }
+                                            </Box>
+                                        </FormControl>
+                                    }
+                                </Stack>
                                 <Button
                                     onClick={async (): Promise<void> => {
                                         setInputs(inputs!.filter((__th: InputDetail, i): boolean => index !== i))

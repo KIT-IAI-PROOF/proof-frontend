@@ -8,12 +8,12 @@ class AttachmentService implements IAttachmentService {
     private config: Configuration;
     private attachmentApi: AttachmentControllerApi;
 
-    constructor(basePath: string, token: string | undefined) {
-        this.config = new Configuration({basePath: basePath, accessToken: token});
+    constructor(basePath: string) {
+        this.config = new Configuration({basePath: basePath});
         this.attachmentApi = new AttachmentControllerApi(this.config, basePath, axios);
     }
 
-    async searchAttachment(signal: AbortSignal | undefined, request: RequestListing): Promise<AttachmentPagingModelListing> {
+    async searchAttachments(signal: AbortSignal | undefined, request: RequestListing): Promise<AttachmentPagingModelListing> {
         const options: RawAxiosRequestConfig = {signal: signal};
         const response: AxiosResponse<AttachmentPagingModelListing> = await this.attachmentApi.searchAttachments(request, options)
         return response.data;

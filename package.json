@@ -10,8 +10,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@kit-iai-proof/proof-config-manager-client": "^1.2.0",
-    "@kit-iai-proof/proof-orchestrator-client": "^1.2.0",
+    "@kit-iai-proof/proof-config-manager-client": "^1.3.0",
+    "@kit-iai-proof/proof-orchestrator-client": "^1.3.0",
     "@codemirror/lang-json": "^6.0.1",
     "@codemirror/lint": "^6.8.4",
     "@codemirror/theme-one-dark": "^6.1.2",

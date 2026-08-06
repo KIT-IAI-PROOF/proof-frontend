@@ -1,34 +1,31 @@
 import {useTranslation} from "react-i18next";
 import {NavigateFunction, useNavigate} from "react-router-dom";
-import {Fragment, ReactNode, useContext} from "react";
-import {useIsFetching} from "@tanstack/react-query";
-import {BLOCKS_KEY} from "../../../utils/constants.ts";
+import {Fragment, ReactNode, useCallback, useContext, useEffect, useState} from "react";
+import {useIsFetching, useQuery, UseQueryResult} from "@tanstack/react-query";
+import {ATTACHMENTS_KEY, DEFAULT_CONFIGS_SORTING, DEFAULT_FILTER, DEFAULT_PAGINATION} from "../../../utils/constants.ts";
 import {DataGrid, GridColDef, GridFilterModel, GridPaginationModel, GridRowParams, GridSortModel} from "@mui/x-data-grid";
 import {Box, Button, Paper, Tooltip} from "@mui/material";
 import {EditNoteRounded} from "@mui/icons-material";
-import {AttachmentListing} from "@kit-iai-proof/proof-config-manager-client";
-import ConfigHeader from "../components/ConfigHeader.tsx";
+import {AttachmentListing, AttachmentPagingModelListing} from "@webis/proof-config-manager-client";
+import PageHeader from "../../../app/components/PageHeader.tsx";
 import AddIcon from "@mui/icons-material/Add";
-import {ConfigContext} from "../../../provider/IConfigContext.tsx";
+import {AxiosError} from "axios";
+import {IAppContext} from "../../../provider/AppProvider.tsx";
+import {AppContext} from "../../../provider/AppContext.tsx";
+import {searchAttachmentsQueryOptions} from "../../../query/options/attachmentQueryOptions.tsx";
 
 const AttachmentConfigs: () => ReactNode = (): ReactNode => {
 
     const {t} = useTranslation();
     const navigate: NavigateFunction = useNavigate();
+    const {publishEntityMessage} = useContext<IAppContext>(AppContext);
 
-    const {
-        attachments,
-        attachmentsSortModel,
-        attachmentsFilterModel,
-        attachmentsPaginationModel,
-        onSortModelChange,
-        onFilterModelChange,
-        onPaginationModelChange,
-        attachmentsRequest,
-        updateAttachmentId
-    } = useContext(ConfigContext);
+    const [attachmentsRequest, setAttachmentsRequest] = useState<any>();
+    const [attachmentsSortModel, setAttachmentsSortModel] = useState<GridSortModel>(DEFAULT_CONFIGS_SORTING);
+    const [attachmentsFilterModel, setAttachmentsFilterModel] = useState<GridFilterModel>(DEFAULT_FILTER);
+    const [attachmentsPaginationModel, setAttachmentsPaginationModel] = useState<GridPaginationModel>(DEFAULT_PAGINATION);
 
-    const isFetching: number = useIsFetching({queryKey: [BLOCKS_KEY, attachmentsRequest], exact: true});
+    const isFetching: number = useIsFetching({queryKey: [ATTACHMENTS_KEY, attachmentsRequest], exact: true});
 
     const columns: GridColDef[] = [
         {
@@ -51,6 +48,28 @@ const AttachmentConfigs: () => ReactNode = (): ReactNode => {
         }
     ];
 
+    useEffect(() => {
+        setAttachmentsRequest({
+            sort: attachmentsSortModel,
+            filter: attachmentsFilterModel,
+            pagination: attachmentsPaginationModel
+        })
+    }, [attachmentsFilterModel, attachmentsPaginationModel, attachmentsSortModel]);
+
+    const onSortModelChange = useCallback((sortModel: GridSortModel) => {
+        setAttachmentsSortModel(sortModel);
+    }, []);
+
+    const onFilterModelChange = useCallback((filterModel: GridFilterModel) => {
+        setAttachmentsFilterModel(filterModel);
+    }, []);
+
+    const onPaginationModelChange = useCallback((paginationModel: GridPaginationModel) => {
+        setAttachmentsPaginationModel(paginationModel);
+    }, []);
+
+    const {data: attachments}: UseQueryResult<AttachmentPagingModelListing, AxiosError> = useQuery(searchAttachmentsQueryOptions(attachmentsRequest));
+
     return (
         <Fragment>
             <Box
@@ -60,7 +79,7 @@ const AttachmentConfigs: () => ReactNode = (): ReactNode => {
                 paddingBottom={15}>
                 <Paper>
                     <Box padding={3}>
-                        <ConfigHeader
+                        <PageHeader
                             icon={
                                 <Fragment>
                                     <EditNoteRounded
@@ -79,7 +98,6 @@ const AttachmentConfigs: () => ReactNode = (): ReactNode => {
                                             startIcon={<AddIcon/>}
                                             variant={"outlined"}
                                             onClick={async (): Promise<void> => {
-                                                updateAttachmentId(undefined);
                                                 navigate("/configs/attachments/create")
                                             }}
                                             color={"primary"}>
@@ -113,15 +131,20 @@ const AttachmentConfigs: () => ReactNode = (): ReactNode => {
                             filterModel={attachmentsFilterModel}
                             paginationModel={attachmentsPaginationModel}
                             onSortModelChange={(sortModel: GridSortModel) => {
-                                onSortModelChange(sortModel, false, false, false, false, true);
+                                onSortModelChange(sortModel);
                             }}
                             onFilterModelChange={(filterModel: GridFilterModel) => {
-                                onFilterModelChange(filterModel, false, false, false, false, true);
+                                onFilterModelChange(filterModel);
                             }}
                             onPaginationModelChange={(paginationModel: GridPaginationModel) => {
-                                onPaginationModelChange(paginationModel, false, false, false, false, true);
+                                onPaginationModelChange(paginationModel);
                             }}
-                            onRowClick={(params: GridRowParams<AttachmentListing>): void => navigate(`/configs/attachments/${params.row.id}`)}
+                            onRowClick={(params: GridRowParams<AttachmentListing>): void => {
+                                if (params.row.id) {
+                                    publishEntityMessage(params.row.id, "attachments")
+                                    navigate(`/configs/attachments/${params.row.id}`);
+                                }
+                            }}
                             pageSizeOptions={[10, 25, 50, 100]}
                         />
 

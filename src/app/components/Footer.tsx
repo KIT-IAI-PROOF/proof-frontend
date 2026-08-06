@@ -26,7 +26,7 @@ const Footer: () => ReactNode = (): ReactNode => {
                 paddingRight={5}
                 style={{width: "100%", position: "fixed", bottom: 0, left: 0, right: 0}}
             >
-                <Typography variant={"body2"}>© {new Date().getFullYear()} Institut für Automation und angewandte Informatik</Typography>
+                <Typography variant={"body2"}>© 2025-{new Date().getFullYear()} {t("about.iai")}</Typography>
                 <Box paddingRight={1} flex={30}></Box>
                 <Stack display={{xs: "none", lg: "flex"}} direction={"row"} spacing={1} alignItems={"center"}>
                     <Link

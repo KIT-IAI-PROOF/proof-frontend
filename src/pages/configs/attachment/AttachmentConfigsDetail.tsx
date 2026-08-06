@@ -5,13 +5,18 @@ import Grid from "@mui/material/Grid2";
 import {useTranslation} from "react-i18next";
 import {EditNoteRounded, Info, UploadRounded} from "@mui/icons-material";
 import {IAppContext} from "../../../provider/AppProvider.tsx";
-import {useIsFetching} from "@tanstack/react-query";
-import {PROGRAMS_KEY} from "../../../utils/constants.ts";
-import ConfigHeader from "../components/ConfigHeader.tsx";
+import {useMutation, UseMutationResult, useQuery, useQueryClient, UseQueryResult} from "@tanstack/react-query";
+import {ATTACHMENTS_KEY, ENTITY_TYPES, INVALIDATION_KEYS} from "../../../utils/constants.ts";
+import PageHeader from "../../../app/components/PageHeader.tsx";
 import ConfirmDialog from "../../../app/components/ConfirmDialog.tsx";
-import {ConfigContext} from "../../../provider/IConfigContext.tsx";
 import {AppContext} from "../../../provider/AppContext.tsx";
 import dayjs from "dayjs";
+import {AttachmentDetail} from "@webis/proof-config-manager-client";
+import {AxiosError} from "axios";
+import {v4 as uuidv4} from "uuid";
+import {getErrorMessage} from "../../../utils/error.ts";
+import {attachmentService} from "../../../services/instances.ts";
+import {attachmentQueryOptions} from "../../../query/options/attachmentQueryOptions.tsx";
 
 const AttachmentConfigsDetail: () => ReactNode = (): ReactNode => {
 
@@ -20,12 +25,8 @@ const AttachmentConfigsDetail: () => ReactNode = (): ReactNode => {
     const {t} = useTranslation();
     const navigate: NavigateFunction = useNavigate();
     const location = useLocation();
-    const {
-        hasUnsavedChanges,
-        updateHasUnsavedChanges,
-        updateAllowNavigation,
-    } = useContext<IAppContext>(AppContext);
-    const isFetching: number = useIsFetching({queryKey: [PROGRAMS_KEY, attachmentId], exact: true});
+    const queryClient = useQueryClient();
+    const {hasUnsavedChanges, updateError, sessionKey, updateHasUnsavedChanges, updateAllowNavigation,} = useContext<IAppContext>(AppContext);
 
     const [file, setFile] = useState<File | undefined>(undefined);
     const [label, setLabel] = useState<string | undefined>(undefined);
@@ -34,12 +35,44 @@ const AttachmentConfigsDetail: () => ReactNode = (): ReactNode => {
     const [deleteDialogOpen, setDeleteDialogOpen] = useState<boolean>(false);
     const [labelError, setLabelError] = useState<boolean>();
 
-    const {
-        attachment,
-        updateAttachmentId,
-        attachmentMutation,
-        attachmentDeletion
-    } = useContext(ConfigContext);
+    const {data: attachment}: UseQueryResult<AttachmentDetail, AxiosError> = useQuery(attachmentQueryOptions(attachmentId));
+
+    const attachmentMutation: UseMutationResult<AttachmentDetail, AxiosError, { attachment: AttachmentDetail, file: File | undefined }, any> = useMutation({
+        retry: false,
+        mutationFn: async ({attachment, file}): Promise<AttachmentDetail> => {
+            if (attachment.id) return await attachmentService.updateAttachmentWithFile(attachment.id, attachment, file, undefined, sessionKey);
+            else return await attachmentService.createAttachmentWithFile({...attachment, id: uuidv4()}, file, undefined, sessionKey);
+        },
+        onMutate: async (): Promise<void> => {
+            return await queryClient.cancelQueries({queryKey: [ATTACHMENTS_KEY]});
+        },
+        onSuccess: async (result: AttachmentDetail): Promise<void> => {
+            for (const queryKey of INVALIDATION_KEYS[ATTACHMENTS_KEY]) await queryClient.invalidateQueries({
+                queryKey: [queryKey],
+                exact: false
+            });
+            await queryClient.setQueryData([ATTACHMENTS_KEY, result.id], result);
+        },
+        onError: (error: AxiosError): void => {
+            updateError(getErrorMessage(error, ENTITY_TYPES[ATTACHMENTS_KEY], t))
+        }
+    });
+
+    const attachmentDeletion: UseMutationResult<boolean, AxiosError, string, void> = useMutation({
+        retry: false,
+        mutationFn: async (attachmentId: string): Promise<boolean> => {
+            return await attachmentService.deleteAttachment(attachmentId, undefined, sessionKey);
+        },
+        onSuccess: async (): Promise<void> => {
+            for (const queryKey of INVALIDATION_KEYS[ATTACHMENTS_KEY]) await queryClient.invalidateQueries({
+                queryKey: [queryKey],
+                exact: false
+            });
+        },
+        onError: (error: AxiosError): void => {
+            updateError(getErrorMessage(error, ENTITY_TYPES[ATTACHMENTS_KEY], t))
+        }
+    });
 
     const handleSave = async () => {
         let valid = true;
@@ -89,10 +122,6 @@ const AttachmentConfigsDetail: () => ReactNode = (): ReactNode => {
         setPath(attachment?.path ?? "");
     }, [attachment?.description, attachment?.label, attachment?.path]);
 
-    useEffect(() => {
-        if (attachmentId) updateAttachmentId(attachmentId);
-    }, [attachmentId, updateAttachmentId]);
-
     return (
         <Fragment>
             <Box
@@ -101,9 +130,9 @@ const AttachmentConfigsDetail: () => ReactNode = (): ReactNode => {
                 paddingLeft={10}
                 paddingBottom={15}
             >
-                {(attachment || !attachmentId) && !isFetching && <Paper elevation={0}>
+                <Paper elevation={0}>
                     <Box padding={3}>
-                        <ConfigHeader
+                        <PageHeader
                             icon={
                                 <Fragment>
                                     <EditNoteRounded
@@ -442,7 +471,7 @@ const AttachmentConfigsDetail: () => ReactNode = (): ReactNode => {
                             }
                         </Grid>
                     </Box>
-                </Paper>}
+                </Paper>
             </Box>
             <ConfirmDialog
                 dialogTitle={t("dialog.header.confirmDelete")}
@@ -450,7 +479,6 @@ const AttachmentConfigsDetail: () => ReactNode = (): ReactNode => {
                 open={deleteDialogOpen}
                 setOpen={setDeleteDialogOpen}
                 callback={() => {
-                    updateAttachmentId(undefined);
                     updateAllowNavigation(true);
                     attachmentDeletion
                         .mutateAsync(attachmentId!)

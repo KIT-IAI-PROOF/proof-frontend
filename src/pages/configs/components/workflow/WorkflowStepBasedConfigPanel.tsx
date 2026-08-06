@@ -1,50 +1,40 @@
-import {Autocomplete, Box, Button, Card, CardActions, Divider, IconButton, Paper, Stack, TextField, Theme, Tooltip, Typography, useTheme} from "@mui/material";
+import {Autocomplete, Box, Button, Card, CardActions, Divider, FormLabel, IconButton, Paper, Stack, TextField, Theme, Tooltip, Typography, useTheme} from "@mui/material";
 import {toInt} from "validator";
 import React, {Dispatch, Fragment, ReactNode, SetStateAction, useContext, useEffect, useState} from "react";
-import {StepBasedConfigurationDetail} from "@kit-iai-proof/proof-config-manager-client";
+import {BlockDetail, StepBasedConfigurationDetail} from "@webis/proof-config-manager-client";
 import {useTranslation} from "react-i18next";
 import Grid from "@mui/material/Grid2";
 import DeleteIcon from "@mui/icons-material/Delete";
 import {IAppContext} from "../../../../provider/AppProvider.tsx";
 import {Info} from "@mui/icons-material";
 import {AppContext} from "../../../../provider/AppContext.tsx";
-import {ConfigContext} from "../../../../provider/IConfigContext.tsx";
-import {IConfigContext} from "../../../../provider/ConfigProvider.tsx";
 
 interface IProps {
+    blocks: BlockDetail[] | undefined,
     stepBasedConfig: StepBasedConfigurationDetail | undefined,
     setStepBasedConfig: (stepBasedConfig: StepBasedConfigurationDetail | undefined) => void,
     keyErrors: { [key: string]: boolean },
-    setKeyErrors: Dispatch<SetStateAction<{
-        [p: string]: boolean
-    }>>
+    setKeyErrors: Dispatch<SetStateAction<{ [p: string]: boolean }>>
 }
 
-const WorkflowStepBasedConfigPanel: ({
-                                         stepBasedConfig,
-                                         setStepBasedConfig,
-                                         keyErrors,
-                                         setKeyErrors
-                                     }: IProps) => ReactNode = ({
-                                                                    stepBasedConfig,
-                                                                    setStepBasedConfig,
-                                                                    keyErrors,
-                                                                    setKeyErrors
-                                                                }: IProps): ReactNode => {
+const WorkflowStepBasedConfigPanel: ({blocks, stepBasedConfig, setStepBasedConfig, keyErrors, setKeyErrors}: IProps) => ReactNode = ({
+                                                                                                                                         blocks,
+                                                                                                                                         stepBasedConfig,
+                                                                                                                                         setStepBasedConfig,
+                                                                                                                                         keyErrors,
+                                                                                                                                         setKeyErrors
+                                                                                                                                     }: IProps): ReactNode => {
+
     const {t} = useTranslation();
     const theme: Theme = useTheme();
     const {hasUnsavedChanges, updateHasUnsavedChanges} = useContext<IAppContext>(AppContext);
-    const {workflow} = useContext<IConfigContext>(ConfigContext);
 
     const [editingKeys, setEditingKeys] = useState<{ [originalKey: string]: string }>({});
-    const [editingStepSizeKeys, setEditingStepSizeKeys] = useState<{
-        [stepSizeDefinitionId: string]: { [id: string]: string }
-    }>({});
+    const [editingStepSizeKeys, setEditingStepSizeKeys] = useState<{ [stepSizeDefinitionId: string]: { [id: string]: string } }>({});
 
     useEffect(() => {
         if (stepBasedConfig?.stepSizeDefinitions) {
             const definitionKeys = Object.keys(stepBasedConfig.stepSizeDefinitions);
-
             const initialEditingKeys = definitionKeys.reduce((acc, key) => {
                 acc[key] = key;
                 return acc;
@@ -203,33 +193,36 @@ const WorkflowStepBasedConfigPanel: ({
                                 })
                             }}
                         />
-                        <TextField
-                            fullWidth={true}
-                            size="small"
-                            variant={"outlined"}
-                            type={"number"}
-                            label={
-                                <Stack direction={"row"}>
-                                    <Typography>
-                                        {t("word.duration")}
-                                    </Typography>
-                                    <Tooltip title={t("tooltip.duration")}>
-                                        <Info
-                                            fontSize={"small"}
-                                            sx={{ml: 1, cursor: "pointer"}}
-                                        />
-                                    </Tooltip>
-                                </Stack>
-                            }
-                            value={stepBasedConfig?.duration ?? ""}
-                            onChange={(event) => {
-                                if (!hasUnsavedChanges) updateHasUnsavedChanges(true)
-                                setStepBasedConfig({
-                                    ...stepBasedConfig,
-                                    duration: event.target.value === "" ? undefined : toInt(event.target.value)
-                                })
-                            }}
-                        />
+                        <Stack direction={"row"} alignItems={"center"} spacing={2}>
+                            <TextField
+                                fullWidth={true}
+                                size="small"
+                                variant={"outlined"}
+                                type={"number"}
+                                label={
+                                    <Stack direction={"row"}>
+                                        <Typography>
+                                            {t("word.duration")}
+                                        </Typography>
+                                        <Tooltip title={t("tooltip.duration")}>
+                                            <Info
+                                                fontSize={"small"}
+                                                sx={{ml: 1, cursor: "pointer"}}
+                                            />
+                                        </Tooltip>
+                                    </Stack>
+                                }
+                                value={stepBasedConfig?.duration ?? ""}
+                                onChange={(event) => {
+                                    if (!hasUnsavedChanges) updateHasUnsavedChanges(true)
+                                    setStepBasedConfig({
+                                        ...stepBasedConfig,
+                                        duration: event.target.value === "" ? undefined : toInt(event.target.value)
+                                    })
+                                }}
+                            />
+                            <FormLabel color={"primary"} sx={{fontSize: "0.875rem"}}>ms</FormLabel>
+                        </Stack>
                     </Stack>
                     <Card sx={{padding: 2}}>
                         <Stack padding={2}>
@@ -287,11 +280,11 @@ const WorkflowStepBasedConfigPanel: ({
                                                 <Grid size={11}>
                                                     <Autocomplete
                                                         size="small"
-                                                        value={workflow?.blocks?.find(block => String(block.index) === (editingKeys[key] ?? key)) ? {
-                                                            label: `${workflow.blocks.find(block => String(block.index) === (editingKeys[key] ?? key))?.label ?? 'Block'} (Index: ${editingKeys[key] ?? key})`,
+                                                        value={blocks?.find(block => String(block.index) === (editingKeys[key] ?? key)) ? {
+                                                            label: `${blocks.find(block => String(block.index) === (editingKeys[key] ?? key))?.label ?? 'Block'} (Index: ${editingKeys[key] ?? key})`,
                                                             value: editingKeys[key] ?? key
                                                         } : null}
-                                                        options={workflow?.blocks?.map(block => ({
+                                                        options={blocks?.map(block => ({
                                                             label: `${block.label ?? 'Block'} (Index: ${block.index})`,
                                                             value: String(block.index)
                                                         })) ?? []}
@@ -674,7 +667,7 @@ const WorkflowStepBasedConfigPanel: ({
                                 variant="outlined"
                                 disabled={
                                     // Disable if all blocks already have definitions
-                                    workflow?.blocks?.every(block =>
+                                    blocks?.every(block =>
                                         String(block.index) in (stepBasedConfig?.stepSizeDefinitions ?? {})
                                     ) ?? true
                                 }
@@ -683,7 +676,7 @@ const WorkflowStepBasedConfigPanel: ({
                                     const existingDefinitions = stepBasedConfig?.stepSizeDefinitions ?? {};
 
                                     // Find the first available block index that doesn't have a definition yet
-                                    const availableBlock = workflow?.blocks?.find(block =>
+                                    const availableBlock = blocks?.find(block =>
                                         !(String(block.index) in existingDefinitions)
                                     );
 

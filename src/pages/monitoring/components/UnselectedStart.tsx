@@ -1,14 +1,16 @@
-import {Fragment, ReactNode, useContext} from "react";
+import {Fragment, ReactNode} from "react";
 import {FormControl, InputLabel, MenuItem, Paper, Select, SelectChangeEvent, Theme, useTheme} from "@mui/material";
-import {WorkflowDetail} from "@kit-iai-proof/proof-config-manager-client";
-import {IMonitoringContext} from "../../../provider/MonitoringProvider.tsx";
+import {WorkflowDetail} from "@webis/proof-config-manager-client";
 import {NavigateFunction, useNavigate} from "react-router-dom";
 import Grid from "@mui/material/Grid2";
-import {MonitoringContext} from "../../../provider/IMonitoringContext.tsx";
+import {useQuery, UseQueryResult} from "@tanstack/react-query";
+import {AxiosError} from "axios";
+import {workflowsQueryOptions} from "../../../query/options/workflowQueryOptions.tsx";
 
 const UnselectedStart: () => ReactNode = (): ReactNode => {
 
-    const {workflows} = useContext<IMonitoringContext>(MonitoringContext);
+    const {data: workflows}: UseQueryResult<WorkflowDetail[], AxiosError> = useQuery(workflowsQueryOptions());
+
     const theme: Theme = useTheme();
     const navigate: NavigateFunction = useNavigate();
 

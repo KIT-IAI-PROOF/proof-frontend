@@ -26,3 +26,11 @@
     left: -2px;
     top: 0;
 }
+
+.cm-scroller {
+    border-radius: 5px;
+}
+
+.cm-editor {
+    border-radius: 5px;
+}

@@ -1,36 +1,36 @@
-import {Fragment, ReactNode, useContext, useEffect, useMemo, useState} from "react";
+import {Fragment, ReactNode, useCallback, useContext, useEffect, useState} from "react";
 import {Alert, Box, Button, ButtonGroup, Chip, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, Paper, Stack, Theme, Tooltip, Typography, useTheme} from "@mui/material";
 import StopIcon from '@mui/icons-material/Stop';
 import MonitorHeartIcon from "@mui/icons-material/MonitorHeart";
 import {DataGrid, GridColDef, GridFilterModel, GridPaginationModel, GridRenderCellParams, GridRowParams, GridSortModel} from "@mui/x-data-grid";
 import {useTranslation} from "react-i18next";
 import {NavigateFunction, useNavigate} from "react-router-dom";
-import {IMonitoringContext} from "../../provider/MonitoringProvider.tsx";
 import Grid from "@mui/material/Grid2";
-import {ExecutionListing, ExecutionListingStatusEnum} from "@kit-iai-proof/proof-config-manager-client";
-import {QueryClient, useIsFetching, useMutation, UseMutationResult, useQueryClient} from "@tanstack/react-query";
-import {EXECUTIONS_KEY, INVALIDATION_KEYS} from "../../utils/constants.ts";
-import {IOrchestrationService} from "../../services/interfaces/IOrchestrationService.ts";
-import OrchestrationService from "../../services/OrchestrationService.ts";
+import {ExecutionListing, ExecutionListingStatusEnum, ExecutionPagingModelListing} from "@webis/proof-config-manager-client";
+import {QueryClient, useIsFetching, useMutation, UseMutationResult, useQuery, useQueryClient, UseQueryResult} from "@tanstack/react-query";
+import {DEFAULT_FILTER, DEFAULT_MONITORING_SORTING, DEFAULT_PAGINATION, ENTITY_TYPES, EXECUTIONS_KEY, INVALIDATION_KEYS} from "../../utils/constants.ts";
 import {AuthContextProps, useAuth} from "react-oidc-context";
-import {MonitoringContext} from "../../provider/IMonitoringContext.tsx";
 import {IAppContext} from "../../provider/AppProvider.tsx";
 import {AppContext} from "../../provider/AppContext.tsx";
 import {RestartAlt, UploadRounded} from "@mui/icons-material";
 import dayjs from "dayjs";
 import DeleteIcon from "@mui/icons-material/Delete";
-import {IExecutionService} from "../../services/interfaces/IExecutionService.ts";
-import ExecutionService from "../../services/ExecutionService.ts";
 import {AxiosError} from "axios";
 import {isAdmin} from "../../utils/auth.ts";
 import ConfirmDialog from "../../app/components/ConfirmDialog.tsx";
+import {executionService, orchestrationService} from "../../services/instances.ts";
+import {getErrorMessage} from "../../utils/error.ts";
+import {MonitoringContext} from "../../provider/MonitoringContext.tsx";
+import {IMonitoringContext} from "../../provider/MonitoringProvider.tsx";
+import {searchExecutionsQueryOptions} from "../../query/options/executionQueryOptions.tsx";
 
 const Monitoring: () => ReactNode = (): ReactNode => {
 
     const {t} = useTranslation();
     const navigate: NavigateFunction = useNavigate();
     const theme: Theme = useTheme();
-    const {settings, sessionKey}: IAppContext = useContext<IAppContext>(AppContext);
+    const {sessionKey}: IAppContext = useContext<IAppContext>(AppContext);
+    const {resetEditor}: IMonitoringContext = useContext<IMonitoringContext>(MonitoringContext);
     const [deleteExecution, setDeleteExecution] = useState<string | undefined>(undefined);
     const {user}: AuthContextProps = useAuth();
     const queryClient: QueryClient = useQueryClient();
@@ -38,21 +38,11 @@ const Monitoring: () => ReactNode = (): ReactNode => {
     const [importDialogOpen, setImportDialogOpen] = useState<boolean>(false);
     const [value, setValue] = useState<File | undefined>(undefined);
     const [error, setError] = useState<string>();
-    const {
-        updateExecutionId,
-        filteredExecutions,
-        sortModel,
-        filterModel,
-        onFilterModelChange,
-        onPaginationModelChange,
-        paginationModel,
-        onSortModelChange,
-        executionRequest,
-        deleteExecutionMutation
-    } = useContext<IMonitoringContext>(MonitoringContext);
 
-    const orchestrationService: IOrchestrationService = useMemo((): IOrchestrationService => new OrchestrationService(settings.executionBasePath, user?.access_token), [settings.executionBasePath, user?.access_token]);
-    const executionService: IExecutionService = useMemo((): IExecutionService => new ExecutionService(settings.configBasePath, user?.access_token), [settings.configBasePath, user?.access_token]);
+    const [executionRequest, setExecutionRequest] = useState<any>();
+    const [executionSortModel, setExecutionSortModel] = useState<GridSortModel>(DEFAULT_MONITORING_SORTING);
+    const [executionFilterModel, setExecutionFilterModel] = useState<GridFilterModel>(DEFAULT_FILTER);
+    const [executionPaginationModel, setExecutionPaginationModel] = useState<GridPaginationModel>(DEFAULT_PAGINATION);
 
     const isFetching: number = useIsFetching({queryKey: [EXECUTIONS_KEY, executionRequest], exact: true});
 
@@ -193,15 +183,29 @@ const Monitoring: () => ReactNode = (): ReactNode => {
         }
     ];
 
-    const handleChange: (e: any) => void = (e: any): void => {
-        if (e.target.files && e.target.files[0]) {
-            setValue(e.target.files[0]);
-            setError(undefined);
-        }
-    };
+    useEffect((): void => {
+        setExecutionRequest({
+            sort: executionSortModel,
+            filter: executionFilterModel,
+            pagination: executionPaginationModel
+        })
+    }, [executionSortModel, executionFilterModel, executionPaginationModel]);
 
+    const onFilterModelChange: (filterModel: GridFilterModel) => void = useCallback((filterModel: GridFilterModel): void => {
+        setExecutionFilterModel(filterModel);
+    }, []);
 
-    const mutation: UseMutationResult<void, AxiosError, File, any> = useMutation({
+    const onSortModelChange: (sortModel: GridSortModel) => void = useCallback((sortModel: GridSortModel): void => {
+        setExecutionSortModel(sortModel);
+    }, []);
+
+    const onPaginationModelChange: (paginationModel: GridPaginationModel) => void = useCallback((paginationModel: GridPaginationModel): void => {
+        setExecutionPaginationModel(paginationModel);
+    }, []);
+
+    const {data: executions}: UseQueryResult<ExecutionPagingModelListing, AxiosError> = useQuery(searchExecutionsQueryOptions(executionRequest));
+
+    const executionImport: UseMutationResult<void, AxiosError, File, any> = useMutation({
         retry: false,
         mutationFn: async (file: File): Promise<void> => {
             await executionService.importExecution(file, undefined, sessionKey)
@@ -214,9 +218,28 @@ const Monitoring: () => ReactNode = (): ReactNode => {
         }
     });
 
-    useEffect(() => {
-        updateExecutionId(undefined)
-    }, [updateExecutionId]);
+    const executionDeletion: UseMutationResult<boolean, AxiosError, string, void> = useMutation({
+        retry: false,
+        mutationFn: async (executionId: string): Promise<boolean> => {
+            return await executionService.deleteExecution(executionId, undefined, sessionKey);
+        },
+        onSuccess: async (): Promise<void> => {
+            for (const queryKey of INVALIDATION_KEYS[EXECUTIONS_KEY]) await queryClient.invalidateQueries({
+                queryKey: [queryKey],
+                exact: false
+            });
+        },
+        onError: (error: AxiosError): void => {
+            getErrorMessage(error, ENTITY_TYPES[EXECUTIONS_KEY], t)
+        }
+    });
+
+    const handleChange: (e: any) => void = (e: any): void => {
+        if (e.target.files && e.target.files[0]) {
+            setValue(e.target.files[0]);
+            setError(undefined);
+        }
+    };
 
     return (
         <Fragment>
@@ -273,20 +296,25 @@ const Monitoring: () => ReactNode = (): ReactNode => {
                         <div style={{display: "flex", flexDirection: "column"}}>
                             <DataGrid<ExecutionListing>
                                 loading={!!isFetching}
-                                rows={filteredExecutions?.results ?? []}
-                                rowCount={filteredExecutions?.rowCount ?? 0}
+                                rows={executions?.results ?? []}
+                                rowCount={executions?.rowCount ?? 0}
                                 columns={columns}
                                 sortingMode={"server"}
                                 paginationMode={"server"}
                                 filterMode={"server"}
                                 filterDebounceMs={500}
-                                sortModel={sortModel}
-                                filterModel={filterModel}
-                                paginationModel={paginationModel}
+                                sortModel={executionSortModel}
+                                filterModel={executionFilterModel}
+                                paginationModel={executionPaginationModel}
                                 onSortModelChange={(model: GridSortModel): void => onSortModelChange(model)}
                                 onFilterModelChange={(model: GridFilterModel): void => onFilterModelChange(model)}
                                 onPaginationModelChange={(model: GridPaginationModel): void => onPaginationModelChange(model)}
-                                onRowClick={(params: GridRowParams<ExecutionListing>): void => navigate("/monitoring/" + params.row.id)}
+                                onRowClick={(params: GridRowParams<ExecutionListing>): void => {
+                                    if (params.row.id) {
+                                        resetEditor()
+                                        navigate(`/monitoring/${params.row.id}`);
+                                    }
+                                }}
                                 pageSizeOptions={[10, 25, 50, 100]}
                                 disableRowSelectionOnClick={true}
                                 checkboxSelection={false}
@@ -361,7 +389,7 @@ const Monitoring: () => ReactNode = (): ReactNode => {
                                 <Button
                                     onClick={async (): Promise<void> => {
                                         if (value) {
-                                            await mutation
+                                            await executionImport
                                                 .mutateAsync(value)
                                                 .finally(() => setImportDialogOpen(false))
                                         }
@@ -381,8 +409,7 @@ const Monitoring: () => ReactNode = (): ReactNode => {
                 setOpen={() => setDeleteExecution(undefined)}
                 callback={() => {
                     if (deleteExecution) {
-                        updateExecutionId(undefined)
-                        deleteExecutionMutation
+                        executionDeletion
                             .mutateAsync(deleteExecution)
                             .catch((): void => {
                                 navigate(`/monitoring/`);

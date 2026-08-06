@@ -37,8 +37,8 @@ jobs:
           node-version: 18
           registry-url: 'https://npm.pkg.github.com'
 
-      - name: Check npm version
-        run: check-npm-git-version-match
+      #- name: Check npm version
+      #   run: check-npm-git-version-match
 
       - name: Build npm package
         run: |

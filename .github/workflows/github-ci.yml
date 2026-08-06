@@ -2,6 +2,8 @@ name: PROOF UI CI/CD
 
 on:
   push:
+    tags:
+      - "*"
 
 env:
   GITHUB_TOKEN: ${{ secrets.PROOF_PACKAGE_CI_TOKEN }}
@@ -64,6 +66,9 @@ jobs:
       packages: write
 
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
       - name: Download built artifact
         uses: actions/download-artifact@v4
         with:
@@ -81,9 +86,10 @@ jobs:
       - name: Build and push image
         run: |
           TAG="${GITHUB_REF_NAME#v}"
+          IMAGE_NAME="ghcr.io/${IMAGE_OWNER}/${{ github.event.repository.name }}"
           docker build \
             -f docker/Dockerfile \
-            -t "ghcr.io/${IMAGE_OWNER}/${{ github.event.repository.name }}:${TAG}" \
+            -t "${IMAGE_NAME}:${TAG}" \
             .
 
-          docker push "$IMAGE_NAME:$TAG"
+          docker push "${IMAGE_NAME}:${TAG}"

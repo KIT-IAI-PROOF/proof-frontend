@@ -3,7 +3,7 @@ import {Box, Button, Paper, Tooltip} from "@mui/material";
 import {useTranslation} from "react-i18next";
 import {DataGrid, GridColDef, GridFilterModel, GridPaginationModel, GridRowParams, GridSortModel} from "@mui/x-data-grid";
 import {NavigateFunction, useNavigate} from "react-router-dom";
-import {WorkflowListing, WorkflowPagingModelListing} from "@webis/proof-config-manager-client";
+import {WorkflowListing, WorkflowPagingModelListing} from "@kit-iai-proof/proof-config-manager-client";
 import {ArrowForwardRounded, EditNoteRounded} from "@mui/icons-material";
 import {useIsFetching, useQuery, UseQueryResult} from "@tanstack/react-query";
 import {DEFAULT_CONFIGS_SORTING, DEFAULT_FILTER, DEFAULT_PAGINATION, WORKFLOWS_KEY} from "../../../utils/constants.ts";

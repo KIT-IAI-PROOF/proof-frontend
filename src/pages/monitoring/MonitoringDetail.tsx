@@ -33,7 +33,7 @@ import {IAppContext} from "../../provider/AppProvider.tsx";
 import {AppContext} from "../../provider/AppContext.tsx";
 import {IMessage} from "@stomp/stompjs";
 import ConfirmDialog from "../../app/components/ConfirmDialog.tsx";
-import {ExecutionDetail, ExecutionDetailStatusEnum, ExecutionListingStatusEnum} from "@webis/proof-config-manager-client";
+import {ExecutionDetail, ExecutionDetailStatusEnum, ExecutionListingStatusEnum} from "@kit-iai-proof/proof-config-manager-client";
 import {saveAs} from 'file-saver';
 import ExecutionSettingsPanel from "./components/ExecutionSettingsPanel.tsx";
 import {useMutation, UseMutationResult, useQuery, useQueryClient, UseQueryResult} from "@tanstack/react-query";

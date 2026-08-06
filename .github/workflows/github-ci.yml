@@ -44,6 +44,8 @@ jobs:
         run: |
           npm install
           npm run build
+        env:
+          NODE_AUTH_TOKEN: ${{ env.GITHUB_TOKEN }}
 
   deploy:
     if: github.ref_type == 'tag'

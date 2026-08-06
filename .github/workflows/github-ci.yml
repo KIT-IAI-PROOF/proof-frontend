@@ -20,8 +20,16 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Checkout code
+      - name: Checkout CI scripts
         uses: actions/checkout@v4
+        with:
+          repository: kit-iai-proof/proof-ci-scripts
+          path: ci-scripts
+          ref: main
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup path for scripts
+        run: echo "$GITHUB_WORKSPACE/ci-scripts" >> "$GITHUB_PATH"
 
       - name: Setup node
         uses: actions/setup-node@v4

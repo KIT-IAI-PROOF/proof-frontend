@@ -1,7 +1,7 @@
 import {Client} from "@stomp/stompjs";
 import {useEffect} from "react";
 import {AuthContextProps, useAuth} from "react-oidc-context";
-import {BlockDetailStatusEnum} from "@webis/proof-orchestrator-client";
+import {BlockDetailStatusEnum} from "@kit-iai-proof/proof-orchestrator-client";
 import {ISettings} from "../model/ISettings.ts";
 
 const client: Client = new Client();

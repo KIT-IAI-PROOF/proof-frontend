@@ -1,7 +1,7 @@
 import {Autocomplete, Box, Button, Card, CardActions, Divider, FormLabel, IconButton, Paper, Stack, TextField, Theme, Tooltip, Typography, useTheme} from "@mui/material";
 import {toInt} from "validator";
 import React, {Dispatch, Fragment, ReactNode, SetStateAction, useContext, useEffect, useState} from "react";
-import {BlockDetail, StepBasedConfigurationDetail} from "@webis/proof-config-manager-client";
+import {BlockDetail, StepBasedConfigurationDetail} from "@kit-iai-proof/proof-config-manager-client";
 import {useTranslation} from "react-i18next";
 import Grid from "@mui/material/Grid2";
 import DeleteIcon from "@mui/icons-material/Delete";

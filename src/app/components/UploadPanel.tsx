@@ -7,7 +7,7 @@ import {json} from "@codemirror/lang-json";
 import {oneDark} from "@codemirror/theme-one-dark";
 import {githubLight} from "@uiw/codemirror-theme-github";
 import {useTranslation} from "react-i18next";
-import {jsonSyntaxLinter} from "../../../utils/linter/jsonSyntaxLinter.ts";
+import {jsonSyntaxLinter} from "../../utils/linter/jsonSyntaxLinter.ts";
 import {EditorView} from "@codemirror/view";
 
 interface IProps {

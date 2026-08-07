@@ -7,6 +7,7 @@ export const HandleSchema = z.object({
     type: z.string().nullable().optional(),
     unit: z.string().nullable().optional(),
     defaultValue: z.string().nullable().optional(),
+    startValue: z.string().nullable().optional(),
     communicationType: z.string().nullable().optional(),
     modelVarName: z.string().nullable().optional(),
     phase: z.string().nullable().optional(),

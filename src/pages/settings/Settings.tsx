@@ -1,4 +1,4 @@
-import {ChangeEvent, Fragment, ReactNode, useContext} from "react";
+import {Fragment, ReactNode, useContext} from "react";
 import {Box, Button, ButtonGroup, Checkbox, FormControl, FormControlLabel, FormGroup, FormHelperText, FormLabel, Paper, Stack, TextField, Theme, Tooltip, Typography, useTheme} from "@mui/material";
 import SettingsIcon from "@mui/icons-material/Settings";
 import {IAppContext} from "../../provider/AppProvider";
@@ -10,6 +10,7 @@ import isURL from "validator/lib/isURL";
 import {DEFAULT_PALETTE} from "../../utils/palette.ts";
 import {Info} from "@mui/icons-material";
 import {AppContext} from "../../provider/AppContext.tsx";
+import {DEFAULT_SETTINGS} from "../../utils/settings.ts";
 
 const Settings: () => ReactNode = (): ReactNode => {
 
@@ -20,8 +21,6 @@ const Settings: () => ReactNode = (): ReactNode => {
         updatePalette,
         updatePrimaryPalette,
         updateSecondaryPalette,
-        settings,
-        updateSettings
     } = useContext<IAppContext>(AppContext);
 
     const handlePaletteChange = (color: string, index: number) => {
@@ -61,112 +60,121 @@ const Settings: () => ReactNode = (): ReactNode => {
                                             color={"primary"}>{t("page.subheader.setting.general")}</Typography>
                                         <FormControl
                                             fullWidth={true}
-                                            variant="standard">
-                                            <FormLabel
-                                                sx={{paddingBottom: 2}}>{t("page.subheader.setting.description.general")}</FormLabel>
+                                            variant="standard"
+                                        >
+                                            <FormLabel sx={{paddingBottom: 2}}>{t("page.subheader.setting.description.general")}</FormLabel>
                                             <FormGroup
                                                 row={false}
-                                                sx={{paddingBottom: 1}}>
-                                                <TextField
-                                                    error={!isURL(settings.configBasePath, {
-                                                        protocols: ["http", "https"],
-                                                        require_tld: false
-                                                    })}
-                                                    sx={{paddingTop: 1, paddingBottom: 1}}
-                                                    value={settings.configBasePath}
-                                                    size={"small"}
-                                                    label={
-                                                        <Typography>
-                                                            {t("word.configBaseUrl")}
-                                                            <Tooltip
-                                                                title={t("tooltip.configBaseUrl")}
-                                                                placement="top"
-                                                            >
-                                                                <Info sx={{ml: 2, cursor: "pointer"}}/>
-                                                            </Tooltip>
-                                                        </Typography>
-                                                    }
-                                                    variant="outlined"
-                                                    onChange={(event): void => updateSettings({
-                                                        ...settings,
-                                                        configBasePath: event.target.value
-                                                    })}/>
-                                                <TextField
-                                                    error={!isURL(settings.configBasePath, {
-                                                        protocols: ["http", "https"],
-                                                        require_tld: false
-                                                    })}
-                                                    sx={{paddingTop: 1, paddingBottom: 1}}
-                                                    value={settings.executionBasePath}
-                                                    size={"small"}
-                                                    label={
-                                                        <Typography>
-                                                            {t("word.orchestratorBaseUrl")}
-                                                            <Tooltip
-                                                                title={t("tooltip.orchestratorBaseUrl")}
-                                                                placement="top"
-                                                            >
-                                                                <Info sx={{ml: 2, cursor: "pointer"}}/>
-                                                            </Tooltip>
-                                                        </Typography>
-                                                    }
-                                                    variant={"outlined"}
-                                                    onChange={(event: ChangeEvent<HTMLTextAreaElement | HTMLInputElement>): void => updateSettings({
-                                                        ...settings,
-                                                        executionBasePath: event.target.value
-                                                    })}/>
-                                                <TextField
-                                                    error={!isURL(settings.websocketPath, {
-                                                        protocols: ["ws"],
-                                                        require_tld: false
-                                                    })}
-                                                    sx={{paddingTop: 1, paddingBottom: 1}}
-                                                    value={settings.websocketPath}
-                                                    size={"small"}
-                                                    label={
-                                                        <Typography>
-                                                            {t("word.websocket")}
-                                                            <Tooltip
-                                                                title={t("tooltip.websocket")}
-                                                                placement="top"
-                                                            >
-                                                                <Info sx={{ml: 2, cursor: "pointer"}}/>
-                                                            </Tooltip>
-                                                        </Typography>
-                                                    }
-                                                    variant={"outlined"}
-                                                    onChange={(event: ChangeEvent<HTMLTextAreaElement | HTMLInputElement>): void => updateSettings({
-                                                        ...settings,
-                                                        websocketPath: event.target.value
-                                                    })}/>
-                                                <TextField
-                                                    sx={{paddingTop: 1, paddingBottom: 1}}
-                                                    value={settings.version}
-                                                    size={"small"}
-                                                    label={t("word.version")}
-                                                    variant="outlined"
-                                                    disabled={true}
-                                                    onChange={(event: ChangeEvent<HTMLTextAreaElement | HTMLInputElement>): void => updateSettings({
-                                                        ...settings,
-                                                        version: event.target.value
-                                                    })}/>
-                                                <FormControlLabel
-                                                    control={<Checkbox
-                                                        checked={settings.silentMode}
-                                                    />}
-                                                    label={
-                                                        <Typography>
-                                                            {t("word.silent")}
-                                                            <Tooltip title={t("tooltip.silent")}>
-                                                                <Info sx={{ml: 2, cursor: "pointer"}}/>
-                                                            </Tooltip>
-                                                        </Typography>
-                                                    }
-                                                    onChange={(): void => updateSettings({
-                                                        ...settings,
-                                                        silentMode: !settings.silentMode
-                                                    })}
-                                                />
+                                                sx={{paddingBottom: 1}}
+                                            >
+                                                <Stack
+                                                    direction={"column"}
+                                                    spacing={1}
+                                                >
+                                                    <TextField
+                                                        error={!isURL(DEFAULT_SETTINGS.configBasePath, {
+                                                            protocols: ["http", "https"],
+                                                            require_tld: false
+                                                        })}
+                                                        disabled={true}
+                                                        sx={{paddingTop: 1, paddingBottom: 1}}
+                                                        value={DEFAULT_SETTINGS.configBasePath}
+                                                        size={"small"}
+                                                        label={
+                                                            <Typography>
+                                                                {t("word.configBaseUrl")}
+                                                                <Tooltip
+                                                                    title={t("tooltip.configBaseUrl")}
+                                                                    placement="top"
+                                                                >
+                                                                    <Info color={"primary"} sx={{ml: 2, cursor: "pointer"}}/>
+                                                                </Tooltip>
+                                                            </Typography>
+                                                        }
+                                                        variant="outlined"
+                                                    />
+                                                    <TextField
+                                                        error={!isURL(DEFAULT_SETTINGS.configBasePath, {
+                                                            protocols: ["http", "https"],
+                                                            require_tld: false
+                                                        })}
+                                                        disabled={true}
+                                                        sx={{paddingTop: 1, paddingBottom: 1}}
+                                                        value={DEFAULT_SETTINGS.executionBasePath}
+                                                        size={"small"}
+                                                        label={
+                                                            <Typography>
+                                                                {t("word.orchestratorBaseUrl")}
+                                                                <Tooltip
+                                                                    title={t("tooltip.orchestratorBaseUrl")}
+                                                                    placement="top"
+                                                                >
+                                                                    <Info color={"primary"} sx={{ml: 2, cursor: "pointer"}}/>
+                                                                </Tooltip>
+                                                            </Typography>
+                                                        }
+                                                        variant={"outlined"}
+                                                    />
+                                                    <TextField
+                                                        error={!isURL(DEFAULT_SETTINGS.websocketPath, {
+                                                            protocols: ["ws"],
+                                                            require_tld: false
+                                                        })}
+                                                        disabled={true}
+                                                        sx={{paddingTop: 1, paddingBottom: 1}}
+                                                        value={DEFAULT_SETTINGS.websocketPath}
+                                                        size={"small"}
+                                                        label={
+                                                            <Typography>
+                                                                {t("word.websocket")}
+                                                                <Tooltip
+                                                                    title={t("tooltip.websocket")}
+                                                                    placement="top"
+                                                                >
+                                                                    <Info color={"primary"} sx={{ml: 2, cursor: "pointer"}}/>
+                                                                </Tooltip>
+                                                            </Typography>
+                                                        }
+                                                        variant={"outlined"}
+                                                    />
+                                                    <TextField
+                                                        sx={{paddingTop: 1, paddingBottom: 1}}
+                                                        value={DEFAULT_SETTINGS.version}
+                                                        size={"small"}
+                                                        label={
+                                                            <Typography>
+                                                                {t("word.proofVersion")}
+                                                                <Tooltip
+                                                                    title={t("tooltip.proofVersion")}
+                                                                    placement="top"
+                                                                >
+                                                                    <Info color={"primary"} sx={{ml: 2, cursor: "pointer"}}/>
+                                                                </Tooltip>
+                                                            </Typography>
+                                                        }
+                                                        variant={"outlined"}
+                                                        disabled={true}
+                                                    />
+                                                    <FormControlLabel
+                                                        disabled={true}
+                                                        control={
+                                                            <Checkbox
+                                                                disabled={true}
+                                                                checked={DEFAULT_SETTINGS.silentMode}
+                                                            />
+                                                        }
+                                                        label={
+                                                            <Stack direction={"row"} spacing={1} alignItems={"center"}>
+                                                                <Typography color={"inherit"}>
+                                                                    {t("word.silent")}
+                                                                </Typography>
+                                                                <Tooltip title={t("tooltip.silent")}>
+                                                                    <Info color={"primary"} sx={{ml: 2, cursor: "pointer"}}/>
+                                                                </Tooltip>
+                                                            </Stack>
+                                                        }
+                                                    />
+                                                </Stack>
                                             </FormGroup>
                                             <FormHelperText>{t("word.automaticChanges")}</FormHelperText>
                                         </FormControl>

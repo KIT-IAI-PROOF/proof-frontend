@@ -1,15 +1,15 @@
 import {IOrchestrationService} from "./interfaces/IOrchestrationService.ts";
 import axios from "../utils/axios";
 import type {AxiosResponse, RawAxiosRequestConfig} from "axios";
-import {Configuration, Execution, OrchestrationControllerApi} from "@webis/proof-orchestrator-client";
+import {Configuration, Execution, OrchestrationControllerApi} from "@kit-iai-proof/proof-orchestrator-client";
 
 class OrchestrationService implements IOrchestrationService {
 
     private config: Configuration;
     private orchestrationApi: OrchestrationControllerApi;
 
-    constructor(basePath: string, token: string | undefined) {
-        this.config = new Configuration({basePath: basePath, accessToken: token});
+    constructor(basePath: string) {
+        this.config = new Configuration({basePath: basePath});
         this.orchestrationApi = new OrchestrationControllerApi(this.config, basePath, axios);
     }
 

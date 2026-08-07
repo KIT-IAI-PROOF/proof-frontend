@@ -1,4 +1,4 @@
-import {Configuration, RequestListing as Request, TemplateControllerApi, TemplateDetail, TemplatePagingModelListing, WorkflowDetail} from "@webis/proof-config-manager-client";
+import {Configuration, RequestListing as Request, TemplateControllerApi, TemplateDetail, TemplatePagingModelListing, WorkflowDetail} from "@kit-iai-proof/proof-config-manager-client";
 import type {AxiosResponse, RawAxiosRequestConfig} from "axios";
 import axios from "../utils/axios";
 import {ITemplateService} from "./interfaces/ITemplateService.ts";
@@ -7,8 +7,8 @@ class TemplateService implements ITemplateService {
 
     private templateApi: TemplateControllerApi;
 
-    constructor(basePath: string, token: string | undefined) {
-        const config: Configuration = new Configuration({basePath: basePath, accessToken: token});
+    constructor(basePath: string) {
+        const config: Configuration = new Configuration({basePath: basePath});
         this.templateApi = new TemplateControllerApi(config, basePath, axios);
     }
 

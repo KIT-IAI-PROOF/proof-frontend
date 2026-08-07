@@ -35,7 +35,7 @@ import Grid from "@mui/material/Grid2";
 import {IEditorContext} from "../../../provider/EditorProvider.tsx";
 import {useTranslation} from "react-i18next";
 import HelperLines from "./HelperLines.tsx";
-import {BlockDetail, TemplateDetail} from "@webis/proof-config-manager-client";
+import {BlockDetail, TemplateDetail, WorkflowDetail} from "@kit-iai-proof/proof-config-manager-client";
 import GridGoldenratioIcon from "@mui/icons-material/GridGoldenratio";
 import {ConnectionLine} from "./ConnectionLine.tsx";
 import {TBlock} from "../../../model/TBlock.ts";
@@ -43,19 +43,26 @@ import {TEdge} from "../../../model/TEdge.ts";
 import AddIcon from "@mui/icons-material/Add";
 import RemoveIcon from "@mui/icons-material/Remove";
 import FullscreenIcon from "@mui/icons-material/Fullscreen";
-import NodeContextMenu, {INodeMenuProps} from "./NodeContextMenu.tsx";
+import NodeContextMenu, {NodeMenuObject} from "./NodeContextMenu.tsx";
 import {ArrowBackRounded, ArrowForwardRounded} from "@mui/icons-material";
 import {lighten} from "@mui/material/styles";
-import {EditorContext} from "../../../provider/IEditorContext.tsx";
+import {EditorContext} from "../../../provider/EditorContext.tsx";
 import {IAppContext} from "../../../provider/AppProvider.tsx";
 import {AppContext} from "../../../provider/AppContext.tsx";
-import EdgeContextMenu, {IEdgeMenuProps} from "./EdgeContextMenu.tsx";
+import EdgeContextMenu, {EdgeMenuObject} from "./EdgeContextMenu.tsx";
+import {useQuery, UseQueryResult} from "@tanstack/react-query";
+import {AxiosError} from "axios";
+import {useParams} from "react-router-dom";
+import {workflowQueryOptions} from "../../../query/options/workflowQueryOptions.tsx";
+import {templatesQueryOptions} from "../../../query/options/templateQueryOptions.tsx";
+import NotificationDisplay from "../../../app/components/NotficationDisplay.tsx";
 
 const EditorBoard: () => ReactNode = (): ReactNode => {
 
     const theme: Theme = useTheme();
     const {mode} = useColorScheme();
     const {t} = useTranslation();
+    const {workflowId} = useParams();
     const {updateHasUnsavedChanges} = useContext<IAppContext>(AppContext);
     const {
         nodes,
@@ -64,7 +71,6 @@ const EditorBoard: () => ReactNode = (): ReactNode => {
         onNodesChange,
         nodeTypes,
         edgeTypes,
-        templates,
         onEdgesDelete,
         onNodesDelete,
         onNodeDragStart,
@@ -76,47 +82,52 @@ const EditorBoard: () => ReactNode = (): ReactNode => {
         onDrop,
         canUndo,
         canRedo,
-        updateTemplateId,
         deleteEdge,
         deleteNode,
         updateNode,
         helperLineHorizontal,
         helperLineVertical,
         layout,
-        workflow,
         updateIsConnecting,
         outdatedBlocks,
         changedBlocks,
-        differingParameters
+        updateTemplate,
+        differingParameters,
+        connectionErrorMessageVisible,
+        connectionErrorMessage,
+        connectionErrorMessagePosition
     } = useContext<IEditorContext>(EditorContext);
     const [search, setSearch] = useState<string>("");
     const [nodesOpen, setNodesOpen] = useState<boolean>(true);
     const {zoomIn, zoomOut, fitView} = useReactFlow();
-    const [nodeMenuProps, setNodeMenuProps] = useState<INodeMenuProps>({});
-    const [edgeMenuProps, setEdgeMenuProps] = useState<IEdgeMenuProps>({});
+    const [nodeMenuObject, setNodeMenuObject] = useState<NodeMenuObject | undefined>(undefined);
+    const [edgeMenuObject, setEdgeMenuObject] = useState<EdgeMenuObject | undefined>(undefined);
     const descriptionRefs = useRef<Map<string, HTMLDivElement>>(new Map());
     const [showTooltipIds, setShowTooltipIds] = useState<Set<string>>(new Set());
+
+    const {data: workflow}: UseQueryResult<WorkflowDetail, AxiosError> = useQuery(workflowQueryOptions(workflowId));
+    const {data: templates}: UseQueryResult<TemplateDetail[], AxiosError> = useQuery(templatesQueryOptions());
 
     const isLocked: boolean = useMemo(() => workflow === undefined, [workflow])
 
     const onEdgeDelete: (id: string) => void = useCallback((id: string) => {
         deleteEdge(id);
-        setEdgeMenuProps({id: undefined, anchorPosition: undefined});
+        setEdgeMenuObject({id: undefined, anchorPosition: undefined});
     }, [deleteEdge]);
 
     const onNodeDelete: (id: string) => void = useCallback((id: string) => {
         deleteNode(id)
-        setNodeMenuProps({id: undefined, anchorPosition: undefined, data: undefined});
+        setNodeMenuObject({id: undefined, anchorPosition: undefined, data: undefined});
     }, [deleteNode])
 
     const onNodeUpdate: (template: TemplateDetail, block: BlockDetail) => void = useCallback((template: TemplateDetail, block: BlockDetail) => {
         updateNode(template, block);
-        setNodeMenuProps({id: undefined, anchorPosition: undefined, data: undefined});
+        setNodeMenuObject({id: undefined, anchorPosition: undefined, data: undefined});
     }, [updateNode]);
 
     const onEdgeContextMenu: (event: ReactMouseEvent, edge: TEdge) => void = useCallback((event: ReactMouseEvent, edge: TEdge): void => {
         event.preventDefault();
-        setEdgeMenuProps({
+        setEdgeMenuObject({
             id: edge.id,
             anchorPosition: {top: event.clientY, left: event.clientX},
             onDelete: onEdgeDelete
@@ -125,20 +136,19 @@ const EditorBoard: () => ReactNode = (): ReactNode => {
 
     const onNodeContextMenu: (event: ReactMouseEvent, node: TBlock) => void = useCallback((event: ReactMouseEvent, node: TBlock): void => {
         event.preventDefault();
-        updateTemplateId(node.data.templateId);
-        setNodeMenuProps({
+        setNodeMenuObject({
             id: node.id,
             data: node.data,
             anchorPosition: {top: event.clientY, left: event.clientX},
             onDelete: onNodeDelete,
             onUpdate: onNodeUpdate
         })
-    }, [updateTemplateId, onNodeUpdate, onNodeDelete])
+    }, [onNodeUpdate, onNodeDelete])
 
     const onDragStart: (event: DragEvent, template: TemplateDetail) => void = useCallback((event: DragEvent, template: TemplateDetail): void => {
-        updateTemplateId(template.id);
+        updateTemplate(template);
         if (event.dataTransfer) event.dataTransfer.dropEffect = "move";
-    }, [updateTemplateId]);
+    }, [updateTemplate]);
 
     const onDragOver: DragEventHandler = useCallback((event: DragEvent): void => {
         event.preventDefault();
@@ -207,16 +217,12 @@ const EditorBoard: () => ReactNode = (): ReactNode => {
                                 }}
                             >
                                 <NodeContextMenu
-                                    id={nodeMenuProps?.id}
-                                    data={nodeMenuProps.data}
-                                    anchorPosition={nodeMenuProps.anchorPosition}
-                                    onDelete={nodeMenuProps.onDelete}
-                                    onUpdate={nodeMenuProps.onUpdate}
+                                    nodeMenuObject={nodeMenuObject}
+                                    setNodeMenuObject={setNodeMenuObject}
                                 />
                                 <EdgeContextMenu
-                                    id={edgeMenuProps?.id}
-                                    anchorPosition={edgeMenuProps.anchorPosition}
-                                    onDelete={edgeMenuProps.onDelete}
+                                    edgeMenuObject={edgeMenuObject}
+                                    setEdgeMenuObject={setEdgeMenuObject}
                                 />
                                 <Background/>
                                 <Controls showZoom={false} showFitView={false} showInteractive={false}>
@@ -309,7 +315,7 @@ const EditorBoard: () => ReactNode = (): ReactNode => {
                                     {
                                         outdatedBlocks.map((block: BlockDetail) =>
                                             <ListItem key={block.id}>
-                                                {t('word.outdatedBlock')}: {block.label} ({block.id})
+                                                {t('word.outdatedBlock')}: {block.label} ({block.index})
                                             </ListItem>
                                         )
                                     }
@@ -329,7 +335,7 @@ const EditorBoard: () => ReactNode = (): ReactNode => {
                                                 {t('word.blockChanged', {
                                                     block: block.label,
                                                     index: block.index,
-                                                    parameters: differingParameters
+                                                    parameters: block.id ? differingParameters[block.id] : undefined
                                                 })}
                                             </ListItem>
                                         )
@@ -474,6 +480,8 @@ const EditorBoard: () => ReactNode = (): ReactNode => {
                     </Paper>
                 </Grid>
             </Grid>
+            <NotificationDisplay visible={connectionErrorMessageVisible} message={connectionErrorMessage!}
+                                 position={connectionErrorMessagePosition}/>
         </Fragment>
     );
 };

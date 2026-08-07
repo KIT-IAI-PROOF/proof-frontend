@@ -1,32 +1,29 @@
-import {Fragment, ReactNode, useState} from 'react';
+import {Fragment, ReactNode} from 'react';
 import {useTranslation} from 'react-i18next';
 import {Backdrop, Box, Button, Stack, Theme, Typography} from "@mui/material";
 import {QueryClient, useQuery, useQueryClient} from "@tanstack/react-query";
-import {DEFAULT_SETTINGS} from "../../utils/constants.ts";
 import axios from "../../utils/axios.ts";
+import {DEFAULT_SETTINGS} from "../../utils/settings.ts";
 
 export const ConnectionStatus: () => ReactNode = (): ReactNode => {
 
     const {t} = useTranslation();
     const queryClient: QueryClient = useQueryClient();
-    const [healthy, setHealthy] = useState<boolean>(true);
 
-    useQuery({
+    const {data: isHealthy} = useQuery({
         queryKey: ["backend-health"],
         queryFn: async () => {
             try {
                 const response = await axios.get(`${DEFAULT_SETTINGS.configBasePath}/actuator/health`, {timeout: 1000});
                 const {status} = response.data;
-                setHealthy(status === "UP");
                 return status === "UP";
             } catch (e) {
-                setHealthy(false);
                 return false;
             }
         },
         retry: false,
-        retryDelay: 5000,
-        refetchInterval: 5000,
+        retryDelay: 10000,
+        refetchInterval: 10000,
         meta: {
             isBackground: true
         }
@@ -36,7 +33,7 @@ export const ConnectionStatus: () => ReactNode = (): ReactNode => {
         <Fragment>
             <Backdrop
                 color={"#164194"}
-                open={!healthy}
+                open={isHealthy === false}
                 sx={(theme: Theme): { background: string; zIndex: number } => ({
                     background: theme.palette.error.main,
                     zIndex: theme.zIndex.drawer + 1

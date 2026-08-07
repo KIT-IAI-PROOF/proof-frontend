@@ -1,8 +1,8 @@
-import {AttachmentDetail, AttachmentPagingModelListing, RequestListing as Request} from "@webis/proof-config-manager-client";
+import {AttachmentDetail, AttachmentPagingModelListing, RequestListing as Request} from "@kit-iai-proof/proof-config-manager-client";
 
 export interface IAttachmentService {
 
-    searchAttachment(signal: AbortSignal | undefined, request: Request): Promise<AttachmentPagingModelListing>;
+    searchAttachments(signal: AbortSignal | undefined, request: Request): Promise<AttachmentPagingModelListing>;
 
     getAttachments(signal: AbortSignal | undefined): Promise<AttachmentDetail[]>;
 

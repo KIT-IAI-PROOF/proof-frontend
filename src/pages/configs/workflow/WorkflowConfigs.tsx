@@ -1,31 +1,28 @@
-import {Fragment, ReactNode, useContext} from "react";
+import {Fragment, ReactNode, useCallback, useContext, useEffect, useState} from "react";
 import {Box, Button, Paper, Tooltip} from "@mui/material";
 import {useTranslation} from "react-i18next";
 import {DataGrid, GridColDef, GridFilterModel, GridPaginationModel, GridRowParams, GridSortModel} from "@mui/x-data-grid";
 import {NavigateFunction, useNavigate} from "react-router-dom";
-import {WorkflowListing} from "@webis/proof-config-manager-client";
+import {WorkflowListing, WorkflowPagingModelListing} from "@kit-iai-proof/proof-config-manager-client";
 import {ArrowForwardRounded, EditNoteRounded} from "@mui/icons-material";
-import {useIsFetching} from "@tanstack/react-query";
-import {WORKFLOWS_KEY} from "../../../utils/constants.ts";
-import ConfigHeader from "../components/ConfigHeader.tsx";
-import {ConfigContext} from "../../../provider/IConfigContext.tsx";
+import {useIsFetching, useQuery, UseQueryResult} from "@tanstack/react-query";
+import {DEFAULT_CONFIGS_SORTING, DEFAULT_FILTER, DEFAULT_PAGINATION, WORKFLOWS_KEY} from "../../../utils/constants.ts";
+import PageHeader from "../../../app/components/PageHeader.tsx";
+import {AxiosError} from "axios";
+import {IAppContext} from "../../../provider/AppProvider.tsx";
+import {AppContext} from "../../../provider/AppContext.tsx";
+import {searchWorkflowsQueryOptions} from "../../../query/options/workflowQueryOptions.tsx";
 
 const WorkflowConfigs: () => ReactNode = (): ReactNode => {
 
     const {t} = useTranslation();
     const navigate: NavigateFunction = useNavigate();
+    const {publishEntityMessage} = useContext<IAppContext>(AppContext);
 
-    const {
-        workflows,
-        workflowsSortModel,
-        workflowsFilterModel,
-        workflowsPaginationModel,
-        onSortModelChange,
-        onFilterModelChange,
-        onPaginationModelChange,
-        workflowsRequest,
-        updateWorkflowId
-    } = useContext(ConfigContext);
+    const [workflowsRequest, setWorkflowsRequest] = useState<any>();
+    const [workflowsSortModel, setWorkflowsSortModel] = useState<GridSortModel>(DEFAULT_CONFIGS_SORTING);
+    const [workflowsFilterModel, setWorkflowsFilterModel] = useState<GridFilterModel>(DEFAULT_FILTER);
+    const [workflowsPaginationModel, setWorkflowsPaginationModel] = useState<GridPaginationModel>(DEFAULT_PAGINATION);
 
     const isFetching: number = useIsFetching({queryKey: [WORKFLOWS_KEY, workflowsRequest], exact: true});
 
@@ -50,6 +47,28 @@ const WorkflowConfigs: () => ReactNode = (): ReactNode => {
         }
     ];
 
+    useEffect((): void => {
+        setWorkflowsRequest({
+            sort: workflowsSortModel,
+            filter: workflowsFilterModel,
+            pagination: workflowsPaginationModel
+        });
+    }, [workflowsSortModel, workflowsFilterModel, workflowsPaginationModel]);
+
+    const onSortModelChange = useCallback((sortModel: GridSortModel) => {
+        setWorkflowsSortModel(sortModel);
+    }, []);
+
+    const onFilterModelChange = useCallback((filterModel: GridFilterModel) => {
+        setWorkflowsFilterModel(filterModel);
+    }, []);
+
+    const onPaginationModelChange = useCallback((paginationModel: GridPaginationModel) => {
+        setWorkflowsPaginationModel(paginationModel);
+    }, []);
+
+    const {data: workflows}: UseQueryResult<WorkflowPagingModelListing, AxiosError> = useQuery(searchWorkflowsQueryOptions(workflowsRequest));
+
     return (
         <Fragment>
             <Box
@@ -59,7 +78,7 @@ const WorkflowConfigs: () => ReactNode = (): ReactNode => {
                 paddingBottom={15}>
                 <Paper>
                     <Box padding={3}>
-                        <ConfigHeader
+                        <PageHeader
                             icon={
                                 <Fragment>
                                     <EditNoteRounded
@@ -90,7 +109,6 @@ const WorkflowConfigs: () => ReactNode = (): ReactNode => {
                                             startIcon={<ArrowForwardRounded/>}
                                             variant={"outlined"}
                                             onClick={async (): Promise<void> => {
-                                                updateWorkflowId(undefined);
                                                 navigate("/editor")
                                             }}
                                             color={"primary"}>
@@ -112,15 +130,20 @@ const WorkflowConfigs: () => ReactNode = (): ReactNode => {
                             filterModel={workflowsFilterModel}
                             paginationModel={workflowsPaginationModel}
                             onSortModelChange={(sortModel: GridSortModel) => {
-                                onSortModelChange(sortModel, true, false, false, false, false);
+                                onSortModelChange(sortModel);
                             }}
                             onFilterModelChange={(filterModel: GridFilterModel) => {
-                                onFilterModelChange(filterModel, true, false, false, false, false);
+                                onFilterModelChange(filterModel);
                             }}
                             onPaginationModelChange={(paginationModel: GridPaginationModel) => {
-                                onPaginationModelChange(paginationModel, true, false, false, false, false);
+                                onPaginationModelChange(paginationModel);
                             }}
-                            onRowClick={(params: GridRowParams<WorkflowListing>): void => navigate(`/configs/workflows/${params.row.id}`)}
+                            onRowClick={(params: GridRowParams<WorkflowListing>): void => {
+                                if (params.row.id) {
+                                    publishEntityMessage(params.row.id, "workflows")
+                                    navigate(`/configs/workflows/${params.row.id}`);
+                                }
+                            }}
                             pageSizeOptions={[10, 25, 50, 100]}
                         />
                     </Box>

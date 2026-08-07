@@ -1,5 +1,5 @@
 import {IAttachmentService} from "./interfaces/IAttachmentService.ts";
-import {AttachmentControllerApi, AttachmentDetail, AttachmentPagingModelListing, Configuration, RequestListing} from "@webis/proof-config-manager-client";
+import {AttachmentControllerApi, AttachmentDetail, AttachmentPagingModelListing, Configuration, RequestListing} from "@kit-iai-proof/proof-config-manager-client";
 import axios from "../utils/axios.ts";
 import {AxiosResponse, RawAxiosRequestConfig} from "axios";
 
@@ -8,12 +8,12 @@ class AttachmentService implements IAttachmentService {
     private config: Configuration;
     private attachmentApi: AttachmentControllerApi;
 
-    constructor(basePath: string, token: string | undefined) {
-        this.config = new Configuration({basePath: basePath, accessToken: token});
+    constructor(basePath: string) {
+        this.config = new Configuration({basePath: basePath});
         this.attachmentApi = new AttachmentControllerApi(this.config, basePath, axios);
     }
 
-    async searchAttachment(signal: AbortSignal | undefined, request: RequestListing): Promise<AttachmentPagingModelListing> {
+    async searchAttachments(signal: AbortSignal | undefined, request: RequestListing): Promise<AttachmentPagingModelListing> {
         const options: RawAxiosRequestConfig = {signal: signal};
         const response: AxiosResponse<AttachmentPagingModelListing> = await this.attachmentApi.searchAttachments(request, options)
         return response.data;

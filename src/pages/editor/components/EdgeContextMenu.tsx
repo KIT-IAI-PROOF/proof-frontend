@@ -1,35 +1,35 @@
 import {Menu, MenuItem, PopoverPosition} from "@mui/material";
 import {useTranslation} from "react-i18next";
-import {Fragment, ReactNode, useEffect, useState} from "react";
+import {Dispatch, Fragment, ReactNode, SetStateAction, useState} from "react";
 import ConfirmDialog from "../../../app/components/ConfirmDialog.tsx";
 
-export interface IEdgeMenuProps {
+export interface EdgeMenuObject {
     id?: string;
     anchorPosition?: PopoverPosition | undefined;
     onDelete?: (id: string) => void;
 }
 
-const EdgeContextMenu = ({id, anchorPosition, onDelete}: IEdgeMenuProps): ReactNode => {
+export interface IEdgeMenuProps {
+    edgeMenuObject: EdgeMenuObject | undefined;
+    setEdgeMenuObject: Dispatch<SetStateAction<EdgeMenuObject | undefined>>;
+}
+
+const EdgeContextMenu = ({edgeMenuObject, setEdgeMenuObject}: IEdgeMenuProps): ReactNode => {
 
     const {t} = useTranslation();
-    const [position, setPosition] = useState<PopoverPosition | undefined>(anchorPosition);
-    const open = Boolean(position);
+    const open = Boolean(edgeMenuObject?.anchorPosition);
     const [deleteDialogOpen, setDeleteDialogOpen] = useState<boolean>(false);
-
-    useEffect(() => {
-        setPosition(anchorPosition)
-    }, [anchorPosition]);
 
     return (
         <Fragment>
             <Menu
-                id={id}
+                id={edgeMenuObject?.id}
                 open={open}
                 onClose={() => {
-                    setPosition(undefined)
+                    setEdgeMenuObject(undefined)
                 }}
                 anchorReference="anchorPosition"
-                anchorPosition={position ?? {top: 0, left: 0}}
+                anchorPosition={edgeMenuObject?.anchorPosition ?? {top: 0, left: 0}}
                 transformOrigin={{
                     vertical: 'top',
                     horizontal: 'left'
@@ -47,7 +47,7 @@ const EdgeContextMenu = ({id, anchorPosition, onDelete}: IEdgeMenuProps): ReactN
                 open={deleteDialogOpen}
                 setOpen={setDeleteDialogOpen}
                 callback={() => {
-                    onDelete!(id!)
+                    edgeMenuObject?.onDelete!(edgeMenuObject.id!)
                 }}
             />
         </Fragment>

@@ -1,13 +1,16 @@
 import {Menu, MenuItem, PopoverPosition} from "@mui/material";
 import {useTranslation} from "react-i18next";
-import {Fragment, ReactNode, useContext, useEffect, useState} from "react";
+import {Dispatch, Fragment, ReactNode, SetStateAction, useContext, useMemo, useState} from "react";
 import ConfirmDialog from "../../../app/components/ConfirmDialog.tsx";
-import {EditorContext} from "../../../provider/IEditorContext.tsx";
-import {BlockDetail, TemplateDetail} from "@webis/proof-config-manager-client";
-import {useBlocks} from "../../../hooks/storage/useBlocks.ts";
+import {EditorContext} from "../../../provider/EditorContext.tsx";
+import {BlockDetail, TemplateDetail} from "@kit-iai-proof/proof-config-manager-client";
 import {NavigateFunction, useNavigate} from "react-router-dom";
+import {useQuery, UseQueryResult} from "@tanstack/react-query";
+import {AxiosError} from "axios";
+import {blockQueryOptions} from "../../../query/options/blockQueryOptions.tsx";
+import {templateQueryOptions} from "../../../query/options/templateQueryOptions.tsx";
 
-export interface INodeMenuProps {
+export interface NodeMenuObject {
     id?: string;
     data?: any,
     anchorPosition?: PopoverPosition | undefined;
@@ -16,41 +19,45 @@ export interface INodeMenuProps {
     onDuplicate?: () => any;
 }
 
-const NodeContextMenu = ({id, anchorPosition, data, onDelete, onUpdate, onDuplicate}: INodeMenuProps): ReactNode => {
+export interface INodeMenuProps {
+    nodeMenuObject: NodeMenuObject | undefined;
+    setNodeMenuObject: Dispatch<SetStateAction<NodeMenuObject | undefined>>;
+}
+
+const NodeContextMenu = ({nodeMenuObject, setNodeMenuObject}: INodeMenuProps): ReactNode => {
 
     const {t} = useTranslation();
     const navigate: NavigateFunction = useNavigate();
-    const {template, outdatedBlocks, wasConnectingRecently} = useContext(EditorContext);
-    const [, , block] = useBlocks({blockId: data?.temporary ? undefined : id, filter: true});
-    const [position, setPosition] = useState<PopoverPosition | undefined>(anchorPosition);
-    const open = Boolean(position);
+    const {outdatedBlocks, wasConnectingRecently} = useContext(EditorContext);
+    const open: boolean = Boolean(nodeMenuObject?.anchorPosition);
     const [deleteDialogOpen, setDeleteDialogOpen] = useState<boolean>(false);
 
-    useEffect(() => {
-        setPosition(anchorPosition)
-    }, [anchorPosition]);
+    const blockId: string | undefined = useMemo(() => nodeMenuObject?.data?.temporary ? undefined : nodeMenuObject?.id, [nodeMenuObject?.data?.temporary, nodeMenuObject?.id]);
+
+    const {data: block}: UseQueryResult<BlockDetail, AxiosError> = useQuery(blockQueryOptions(blockId));
+    const {data: template}: UseQueryResult<TemplateDetail, AxiosError> = useQuery(templateQueryOptions(block?.templateId));
 
     return (
         <Fragment>
             <Menu
-                id={id}
+                id={nodeMenuObject?.id}
                 open={open}
                 onClose={() => {
-                    setPosition(undefined)
+                    setNodeMenuObject(undefined)
                 }}
                 anchorReference="anchorPosition"
-                anchorPosition={position ?? {top: 0, left: 0}}
+                anchorPosition={nodeMenuObject?.anchorPosition ?? {top: 0, left: 0}}
                 transformOrigin={{
                     vertical: 'top',
                     horizontal: 'left'
                 }}
             >
                 <MenuItem
-                    disabled={data?.temporary}
+                    disabled={nodeMenuObject?.data?.temporary}
                     onClick={(e): void => {
                         e.stopPropagation();
                         if (wasConnectingRecently.current) return;
-                        else navigate(`/configs/blocks/${id}?workflowId=${data.workflowId}`);
+                        else navigate(`/configs/blocks/${nodeMenuObject?.id}?workflowId=${nodeMenuObject?.data.workflowId}`);
                     }}
                 >
                     {t("action.settings")}
@@ -60,11 +67,11 @@ const NodeContextMenu = ({id, anchorPosition, data, onDelete, onUpdate, onDuplic
                 >
                     {t("action.delete")}
                 </MenuItem>
-                {onUpdate && id && outdatedBlocks.find((block) => block.id === id) &&
-                    <MenuItem onClick={() => onUpdate(template!, block!)}>{t("action.update")}</MenuItem>
+                {nodeMenuObject?.onUpdate && nodeMenuObject?.id && outdatedBlocks.find((block) => block.id === nodeMenuObject?.id) &&
+                    <MenuItem onClick={() => nodeMenuObject?.onUpdate!(template!, block!)}>{t("action.update")}</MenuItem>
                 }
-                {onDuplicate &&
-                    <MenuItem onClick={onDuplicate}>{t("action.duplicate")}</MenuItem>
+                {nodeMenuObject?.onDuplicate &&
+                    <MenuItem onClick={nodeMenuObject?.onDuplicate}>{t("action.duplicate")}</MenuItem>
                 }
             </Menu>
             <ConfirmDialog
@@ -73,7 +80,7 @@ const NodeContextMenu = ({id, anchorPosition, data, onDelete, onUpdate, onDuplic
                 open={deleteDialogOpen}
                 setOpen={setDeleteDialogOpen}
                 callback={() => {
-                    onDelete!(id!)
+                    nodeMenuObject?.onDelete!(nodeMenuObject.id!)
                 }}
             />
         </Fragment>

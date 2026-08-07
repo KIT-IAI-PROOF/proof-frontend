@@ -1,4 +1,4 @@
-import {Fragment, ReactNode, useContext, useEffect, useMemo} from "react";
+import {Fragment, ReactNode, useContext, useEffect, useState} from "react";
 import {NavigateFunction, useNavigate, useParams} from "react-router-dom";
 import {Box, Button, ButtonGroup, Paper, Stack, Tooltip, Typography} from "@mui/material";
 import MonitorHeartIcon from "@mui/icons-material/MonitorHeart";
@@ -7,44 +7,69 @@ import {IMonitoringContext} from "../../provider/MonitoringProvider";
 import PreselectedStart from "./components/PreselectedStart.tsx";
 import UnselectedStart from "./components/UnselectedStart.tsx";
 import Grid from "@mui/material/Grid2";
-import {
-    AttachmentDetail,
-    BlockDetail,
-    ExecutionDetail,
-    ExecutionDetailStatusEnum,
-    InputDetail
-} from "@webis/proof-config-manager-client";
+import {AttachmentDetail, BlockDetail, ExecutionDetail, ExecutionDetailStatusEnum, InputDetail, WorkflowDetail} from "@kit-iai-proof/proof-config-manager-client";
 import {Info} from "@mui/icons-material";
-import {IOrchestrationService} from "../../services/interfaces/IOrchestrationService.ts";
-import OrchestrationService from "../../services/OrchestrationService.ts";
-import {AuthContextProps, useAuth} from "react-oidc-context";
-import {MonitoringContext} from "../../provider/IMonitoringContext.tsx";
+import {MonitoringContext} from "../../provider/MonitoringContext.tsx";
 import {IAppContext} from "../../provider/AppProvider.tsx";
 import {AppContext} from "../../provider/AppContext.tsx";
+import {useMutation, UseMutationResult, useQuery, useQueryClient, UseQueryResult} from "@tanstack/react-query";
+import {AxiosError} from "axios";
+import {v4 as uuidv4} from "uuid";
+import {ENTITY_TYPES, EXECUTIONS_KEY, INVALIDATION_KEYS} from "../../utils/constants.ts";
+import {getErrorMessage} from "../../utils/error.ts";
+import {executionService, orchestrationService} from "../../services/instances.ts";
+import {workflowQueryOptions} from "../../query/options/workflowQueryOptions.tsx";
+import {executionsQueryOptions} from "../../query/options/executionQueryOptions.tsx";
 
 const MonitoringStart: () => ReactNode = (): ReactNode => {
 
     const {t} = useTranslation();
     const {workflowId} = useParams();
     const navigate: NavigateFunction = useNavigate();
-    const {user}: AuthContextProps = useAuth();
+    const queryClient = useQueryClient();
     const {
-        workflow,
-        executions,
-        executionsMutation,
-        appliedInputs,
+        execParameters,
+        execStartValues,
+        execDefaultValues,
         executionLabel,
         executionDescription,
-        jsonError,
+        blockStates,
+        updateBlockStates,
+        simulationStartPoint,
+        simulationEndPoint,
+        simulationDuration,
         updateMissingRequiredFields
     } = useContext<IMonitoringContext>(MonitoringContext);
-    const {settings}: IAppContext = useContext<IAppContext>(AppContext);
-
-    const orchestrationService: IOrchestrationService = useMemo((): IOrchestrationService => new OrchestrationService(settings.executionBasePath, user?.access_token), [settings.executionBasePath, user?.access_token]);
+    const {sessionKey}: IAppContext = useContext<IAppContext>(AppContext);
+    const [jsonError, setJsonError] = useState<{ [key: string]: string | undefined; }>({});
 
     useEffect(() => {
         updateMissingRequiredFields([])
-    }, [updateMissingRequiredFields, workflow]);
+    }, [updateMissingRequiredFields]);
+
+    const {data: workflow}: UseQueryResult<WorkflowDetail, AxiosError> = useQuery(workflowQueryOptions(workflowId));
+    const {data: executions}: UseQueryResult<ExecutionDetail[], AxiosError> = useQuery(executionsQueryOptions());
+
+    const executionMutation: UseMutationResult<ExecutionDetail, AxiosError, ExecutionDetail, any> = useMutation({
+        retry: false,
+        mutationFn: async (execution: ExecutionDetail): Promise<ExecutionDetail> => {
+            if (execution.id) return await executionService.updateExecution(execution.id, execution, undefined, sessionKey);
+            else return await executionService.saveExecution({...execution, id: uuidv4()}, undefined, sessionKey);
+        },
+        onMutate: async (): Promise<void> => {
+            return await queryClient.cancelQueries({queryKey: [EXECUTIONS_KEY]});
+        },
+        onSuccess: async (result: ExecutionDetail): Promise<void> => {
+            for (const queryKey of INVALIDATION_KEYS[EXECUTIONS_KEY]) await queryClient.invalidateQueries({
+                queryKey: [queryKey],
+                exact: false
+            });
+            await queryClient.setQueryData([EXECUTIONS_KEY, result.id], result);
+        },
+        onError: (error: AxiosError): void => {
+            getErrorMessage(error, ENTITY_TYPES[EXECUTIONS_KEY], t)
+        }
+    });
 
     const validateRequiredFields: () => boolean = (): boolean => {
         const missing: string[] = [];
@@ -67,7 +92,7 @@ const MonitoringStart: () => ReactNode = (): ReactNode => {
 
             block.inputs?.forEach((handle: InputDetail): void => {
                 if (handle.required && handle.communicationType?.includes("_STATIC")) {
-                    const value: string = appliedInputs[handle.id!];
+                    const value: string = execParameters[handle.id!];
                     if (value === undefined || value === null || value.toString().trim() === "") {
                         missing.push(handle.id!)
                     }
@@ -103,6 +128,55 @@ const MonitoringStart: () => ReactNode = (): ReactNode => {
         updateMissingRequiredFields(missing);
         return missing.length === 0;
     };
+
+    const startExecution = async () => {
+        if (!validateRequiredFields()) return;
+        // Create a copy of workflow with updated simulation config
+        const workflowWithSimConfig = workflow ? {
+            ...workflow,
+            stepBasedConfig: {
+                ...workflow?.stepBasedConfig,
+                startPoint: simulationStartPoint !== undefined ? Number(simulationStartPoint) : workflow?.stepBasedConfig?.startPoint,
+                endPoint: simulationEndPoint !== undefined ? Number(simulationEndPoint) : workflow?.stepBasedConfig?.endPoint,
+                duration: simulationDuration !== undefined ? Number(simulationDuration) : workflow?.stepBasedConfig?.duration
+            }
+        } : undefined;
+
+        await executionMutation
+            .mutateAsync({
+                options: {
+                    override: false,
+                    manual: false
+                },
+                workflow: workflowWithSimConfig,
+                execParameters: execParameters,
+                label: executionLabel,
+                description: executionDescription,
+                status: ExecutionDetailStatusEnum.Unknown,
+                ...(execStartValues && Object.keys(execStartValues).length > 0 && {execStartValues: execStartValues}),
+                ...(execDefaultValues && Object.keys(execDefaultValues).length > 0 && {execDefaultValues: execDefaultValues})
+            } as any)
+            .then(async (result: ExecutionDetail): Promise<void> => {
+                if (result.id) {
+                    const blockStatesCopy = blockStates ?? []
+                    result?.workflow?.blocks?.forEach(block => {
+                        const index: number = blockStatesCopy.findIndex((blockState: {
+                            blockId: string,
+                            status: string | undefined,
+                            cp?: number
+                        }): boolean => blockState.blockId === block.id);
+                        if (index !== -1) {
+                            blockStatesCopy[index].status = undefined;
+                            blockStatesCopy[index].cp = undefined;
+                        }
+                    })
+                    updateBlockStates(blockStatesCopy)
+
+                    navigate(`/monitoring/${result.id}`)
+                    await orchestrationService.startExecution(undefined, result.id)
+                }
+            })
+    }
 
     return (
         <Fragment>
@@ -146,25 +220,7 @@ const MonitoringStart: () => ReactNode = (): ReactNode => {
                                             variant={"outlined"}
                                             disabled={!workflowId || Object.values(jsonError).some((error: string | undefined): boolean => error !== undefined)}
                                             onClick={async (): Promise<void> => {
-                                                if (!validateRequiredFields()) return;
-                                                await executionsMutation
-                                                    .mutateAsync({
-                                                        options: {
-                                                            override: false,
-                                                            manual: false
-                                                        },
-                                                        workflow: workflow,
-                                                        appliedInputs: appliedInputs,
-                                                        label: executionLabel,
-                                                        description: executionDescription,
-                                                        status: ExecutionDetailStatusEnum.Unknown
-                                                    })
-                                                    .then(async (result: ExecutionDetail): Promise<void> => {
-                                                        if (result.id) {
-                                                            navigate(`/monitoring/${result.id}`)
-                                                            await orchestrationService.startExecution(undefined, result.id)
-                                                        }
-                                                    })
+                                                await startExecution();
                                             }}
                                         >
                                             {t("action.execute")}
@@ -176,7 +232,7 @@ const MonitoringStart: () => ReactNode = (): ReactNode => {
                         <Stack spacing={1}>
                             {
                                 workflowId ?
-                                    <PreselectedStart workflowId={workflowId}></PreselectedStart>
+                                    <PreselectedStart jsonError={jsonError} setJsonError={setJsonError} workflowId={workflowId}></PreselectedStart>
                                     :
                                     <UnselectedStart/>
                             }

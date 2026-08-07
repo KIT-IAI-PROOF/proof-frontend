@@ -1,4 +1,4 @@
-import {Configuration, ExecutionListing, RequestListing as Request, WorkflowControllerApi, WorkflowDetail, WorkflowPagingModelListing} from "@webis/proof-config-manager-client";
+import {Configuration, ExecutionListing, RequestListing as Request, WorkflowControllerApi, WorkflowDetail, WorkflowPagingModelListing} from "@kit-iai-proof/proof-config-manager-client";
 import type {AxiosResponse, RawAxiosRequestConfig} from "axios";
 import axios from "../utils/axios";
 import {IWorkflowService} from "./interfaces/IWorkflowService.ts";
@@ -7,8 +7,8 @@ class WorkflowService implements IWorkflowService {
 
     private workflowApi: WorkflowControllerApi;
 
-    constructor(basePath: string, token: string | undefined) {
-        const config: Configuration = new Configuration({basePath: basePath, accessToken: token});
+    constructor(basePath: string) {
+        const config: Configuration = new Configuration({basePath: basePath});
         this.workflowApi = new WorkflowControllerApi(config, basePath, axios);
     }
 

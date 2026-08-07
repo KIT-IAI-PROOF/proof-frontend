@@ -1,6 +1,12 @@
+allowBuilds:
+  esbuild: set this to true or false
+
 ignoredBuiltDependencies:
   - '@swc/core'
   - esbuild
+
+minimumReleaseAgeExclude:
+  - vite@6.4.3
 
 overrides:
   js-yaml@>=4.0.0 <4.1.1: '>=4.1.1'

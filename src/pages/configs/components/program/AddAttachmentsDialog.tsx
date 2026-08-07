@@ -1,4 +1,4 @@
-import {AttachmentDetail} from "@webis/proof-config-manager-client";
+import {AttachmentDetail} from "@kit-iai-proof/proof-config-manager-client";
 import {Dispatch, Fragment, ReactNode, SetStateAction, useContext, useState} from "react";
 import {Box, Button, Dialog, FormControl, InputLabel, MenuItem, Select, SelectChangeEvent, Theme, Typography, useTheme} from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
@@ -7,7 +7,9 @@ import {useTranslation} from "react-i18next";
 import {useNavigate} from "react-router-dom";
 import {IAppContext} from "../../../../provider/AppProvider.tsx";
 import {AppContext} from "../../../../provider/AppContext.tsx";
-import {useAttachments} from "../../../../hooks/storage/useAttachments.ts";
+import {useQuery, UseQueryResult} from "@tanstack/react-query";
+import {AxiosError} from "axios";
+import {attachmentsQueryOptions} from "../../../../query/options/attachmentQueryOptions.tsx";
 
 interface AddAttachmentsDialogProps {
     programId?: string;
@@ -31,9 +33,7 @@ const AddAttachmentsDialog = ({
     const {hasUnsavedChanges, updateHasUnsavedChanges} = useContext<IAppContext>(AppContext);
     const [selectedAttachment, setSelectedAttachment] = useState<AttachmentDetail | undefined>(undefined);
 
-    const [attachments] = useAttachments({
-        filter: false
-    });
+    const {data: attachments}: UseQueryResult<AttachmentDetail[], AxiosError> = useQuery(attachmentsQueryOptions());
 
     return (
         <Fragment>

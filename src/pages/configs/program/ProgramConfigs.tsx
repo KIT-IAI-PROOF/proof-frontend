@@ -1,34 +1,31 @@
-import {Fragment, ReactNode, useContext} from "react";
+import {Fragment, ReactNode, useCallback, useContext, useEffect, useState} from "react";
 import {Box, Button, Paper, Tooltip} from "@mui/material";
 import {useTranslation} from "react-i18next";
 import {DataGrid, GridColDef, GridFilterModel, GridPaginationModel, GridRowParams, GridSortModel} from "@mui/x-data-grid";
-import {ProgramListing} from "@webis/proof-config-manager-client";
+import {ProgramListing, ProgramPagingModelListing} from "@kit-iai-proof/proof-config-manager-client";
 import {NavigateFunction, useNavigate} from "react-router-dom";
 import {EditNoteRounded} from "@mui/icons-material";
-import {useIsFetching} from "@tanstack/react-query";
-import {BLOCKS_KEY} from "../../../utils/constants.ts";
+import {useIsFetching, useQuery, UseQueryResult} from "@tanstack/react-query";
+import {DEFAULT_CONFIGS_SORTING, DEFAULT_FILTER, DEFAULT_PAGINATION, PROGRAMS_KEY} from "../../../utils/constants.ts";
 import AddIcon from "@mui/icons-material/Add";
-import ConfigHeader from "../components/ConfigHeader.tsx";
-import {ConfigContext} from "../../../provider/IConfigContext.tsx";
+import PageHeader from "../../../app/components/PageHeader.tsx";
+import {AxiosError} from "axios";
+import {IAppContext} from "../../../provider/AppProvider.tsx";
+import {AppContext} from "../../../provider/AppContext.tsx";
+import {searchProgramsQueryOptions} from "../../../query/options/programQueryOptions.tsx";
 
 const ProgramConfigs: () => ReactNode = (): ReactNode => {
 
     const {t} = useTranslation();
     const navigate: NavigateFunction = useNavigate();
+    const {publishEntityMessage} = useContext<IAppContext>(AppContext);
 
-    const {
-        programs,
-        programsSortModel,
-        programsFilterModel,
-        programsPaginationModel,
-        onSortModelChange,
-        onFilterModelChange,
-        onPaginationModelChange,
-        blocksRequest,
-        updateProgramId,
-    } = useContext(ConfigContext);
+    const [programsRequest, setProgramsRequest] = useState<any>();
+    const [programsSortModel, setProgramsSortModel] = useState<GridSortModel>(DEFAULT_CONFIGS_SORTING);
+    const [programsFilterModel, setProgramsFilterModel] = useState<GridFilterModel>(DEFAULT_FILTER);
+    const [programsPaginationModel, setProgramsPaginationModel] = useState<GridPaginationModel>(DEFAULT_PAGINATION);
 
-    const isFetching: number = useIsFetching({queryKey: [BLOCKS_KEY, blocksRequest], exact: true});
+    const isFetching: number = useIsFetching({queryKey: [PROGRAMS_KEY, programsRequest], exact: true});
 
     const columns: GridColDef[] = [
         {
@@ -51,6 +48,28 @@ const ProgramConfigs: () => ReactNode = (): ReactNode => {
         }
     ];
 
+    useEffect((): void => {
+        setProgramsRequest({
+            sort: programsSortModel,
+            filter: programsFilterModel,
+            pagination: programsPaginationModel
+        })
+    }, [programsSortModel, programsFilterModel, programsPaginationModel]);
+
+    const onSortModelChange = useCallback((sortModel: GridSortModel) => {
+        setProgramsSortModel(sortModel);
+    }, []);
+
+    const onFilterModelChange = useCallback((filterModel: GridFilterModel) => {
+        setProgramsFilterModel(filterModel);
+    }, []);
+
+    const onPaginationModelChange = useCallback((paginationModel: GridPaginationModel) => {
+        setProgramsPaginationModel(paginationModel);
+    }, []);
+
+    const {data: programs}: UseQueryResult<ProgramPagingModelListing, AxiosError> = useQuery(searchProgramsQueryOptions(programsRequest));
+
     return (
         <Fragment>
             <Box
@@ -60,7 +79,7 @@ const ProgramConfigs: () => ReactNode = (): ReactNode => {
                 paddingBottom={15}>
                 <Paper>
                     <Box padding={3}>
-                        <ConfigHeader
+                        <PageHeader
                             icon={
                                 <Fragment>
                                     <EditNoteRounded
@@ -79,7 +98,6 @@ const ProgramConfigs: () => ReactNode = (): ReactNode => {
                                             startIcon={<AddIcon/>}
                                             variant={"outlined"}
                                             onClick={async (): Promise<void> => {
-                                                updateProgramId(undefined);
                                                 navigate("/configs/programs/create")
                                             }}
                                             color={"primary"}>
@@ -113,15 +131,20 @@ const ProgramConfigs: () => ReactNode = (): ReactNode => {
                             filterModel={programsFilterModel}
                             paginationModel={programsPaginationModel}
                             onSortModelChange={(sortModel: GridSortModel) => {
-                                onSortModelChange(sortModel, false, false, false, true, false);
+                                onSortModelChange(sortModel);
                             }}
                             onFilterModelChange={(filterModel: GridFilterModel) => {
-                                onFilterModelChange(filterModel, false, false, false, true, false);
+                                onFilterModelChange(filterModel);
                             }}
                             onPaginationModelChange={(paginationModel: GridPaginationModel) => {
-                                onPaginationModelChange(paginationModel, false, false, false, true, false);
+                                onPaginationModelChange(paginationModel);
                             }}
-                            onRowClick={(params: GridRowParams<ProgramListing>): void => navigate(`/configs/programs/${params.row.id}`)}
+                            onRowClick={(params: GridRowParams<ProgramListing>): void => {
+                                if (params.row.id) {
+                                    publishEntityMessage(params.row.id, "programs")
+                                    navigate(`/configs/programs/${params.row.id}`);
+                                }
+                            }}
                             pageSizeOptions={[10, 25, 50, 100]}
                         />
                     </Box>

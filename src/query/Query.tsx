@@ -1,4 +1,4 @@
-import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
+import {keepPreviousData, QueryClient, QueryClientProvider} from "@tanstack/react-query";
 import {Fragment, ReactNode} from "react";
 
 interface IProps {
@@ -8,11 +8,14 @@ interface IProps {
 const queryClient: QueryClient = new QueryClient({
     defaultOptions: {
         queries: {
+            placeholderData: keepPreviousData,
             staleTime: 5000,
+            gcTime: 100000,
             refetchOnMount: true,
             refetchOnReconnect: true,
             refetchOnWindowFocus: true,
-            retry: 3,
+            retryDelay: 3000,
+            retry: 3
         }
     }
 });

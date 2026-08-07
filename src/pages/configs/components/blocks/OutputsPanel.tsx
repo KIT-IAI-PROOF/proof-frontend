@@ -1,6 +1,6 @@
 import {Accordion, AccordionDetails, AccordionSummary, FormControl, InputLabel, MenuItem, Select, Stack, TextField, Theme, Typography, useTheme} from "@mui/material";
 import {useTranslation} from "react-i18next";
-import {OutputDetail, OutputDetailCommunicationTypeEnum, OutputDetailTypeEnum} from "@webis/proof-config-manager-client";
+import {OutputDetail, OutputDetailCommunicationTypeEnum, OutputDetailTypeEnum} from "@kit-iai-proof/proof-config-manager-client";
 import React, {ReactNode} from "react";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 
@@ -9,8 +9,10 @@ interface IProps {
 }
 
 const OutputsPanel = ({outputs}: IProps) => {
+
     const theme: Theme = useTheme();
     const {t} = useTranslation();
+
     return (
         <Stack spacing={2} padding={2}>
             {

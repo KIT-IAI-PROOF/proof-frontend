@@ -9,6 +9,7 @@ interface IProps {
 }
 
 const InputsPanel = ({inputs}: IProps) => {
+
     const theme: Theme = useTheme();
     const {t} = useTranslation();
 

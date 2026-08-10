@@ -33,7 +33,7 @@ const Router: () => ReactNode = (): ReactNode => {
 
     return (
         <Fragment>
-            <RouterProvider router={router}/>
+            <RouterProvider future={{v7_startTransition: true}} router={router}/>
         </Fragment>
     );
 

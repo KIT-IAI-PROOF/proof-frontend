@@ -10,7 +10,7 @@ import {EAlgorithm} from "../../../model/EAlgorithm.ts";
 import {IAppContext} from "../../../provider/AppProvider.tsx";
 import {AppContext} from "../../../provider/AppContext.tsx";
 import {IEditorContext} from "../../../provider/EditorProvider.tsx";
-import {EditorContext} from "../../../provider/IEditorContext.tsx";
+import {EditorContext} from "../../../provider/EditorContext.tsx";
 
 const useIdsForInactiveControlPoints = (points: ControlPointData[]) => {
 
@@ -52,9 +52,7 @@ export const BlockEdge = ({
                               data = {
                                   points: [],
                                   algorithm: EAlgorithm.BezierCatmullRom
-                              },
-
-                              ...delegated
+                              }
                           }: EdgeProps<TEdge>): ReactNode => {
 
     const theme = useTheme();
@@ -69,9 +67,9 @@ export const BlockEdge = ({
     const shouldShowPoints = useStore((store) => {
         const sourceNode = store.nodeLookup.get(source)!;
         const targetNode = store.nodeLookup.get(target)!;
-
         return (selected ?? sourceNode.selected) ?? targetNode.selected;
     });
+
     const setControlPoints = useCallback((update: (points: ControlPointData[]) => ControlPointData[]): void => {
         setEdges((edges: TEdge[]): TEdge[] =>
             edges.map((e: TEdge): TEdge => {
@@ -84,10 +82,12 @@ export const BlockEdge = ({
         );
     }, [id, setEdges]);
     const pathPoints = [sourceOrigin, ...data.points, targetOrigin];
+
     const controlPoints = getControlPoints(pathPoints, EAlgorithm.BezierCatmullRom, {
         fromSide: sourcePosition,
         toSide: targetPosition
     }, selfNode);
+
     const path = getPath(pathPoints, EAlgorithm.BezierCatmullRom, {
         fromSide: sourcePosition,
         toSide: targetPosition,
@@ -105,7 +105,6 @@ export const BlockEdge = ({
             <BaseEdge
                 id={id}
                 path={path}
-                {...delegated}
                 markerStart={markerStart}
                 markerEnd={markerEnd}
                 style={{

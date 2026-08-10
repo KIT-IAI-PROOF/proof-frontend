@@ -9,8 +9,10 @@ interface IProps {
 }
 
 const OutputsPanel = ({outputs}: IProps) => {
+
     const theme: Theme = useTheme();
     const {t} = useTranslation();
+
     return (
         <Stack spacing={2} padding={2}>
             {

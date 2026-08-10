@@ -7,8 +7,8 @@ class TemplateService implements ITemplateService {
 
     private templateApi: TemplateControllerApi;
 
-    constructor(basePath: string, token: string | undefined) {
-        const config: Configuration = new Configuration({basePath: basePath, accessToken: token});
+    constructor(basePath: string) {
+        const config: Configuration = new Configuration({basePath: basePath});
         this.templateApi = new TemplateControllerApi(config, basePath, axios);
     }
 

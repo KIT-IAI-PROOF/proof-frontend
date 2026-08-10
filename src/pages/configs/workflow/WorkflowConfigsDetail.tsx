@@ -1,42 +1,32 @@
-import {Fragment, ReactNode, useContext, useEffect, useMemo, useState} from "react";
+import {Fragment, ReactNode, useContext, useEffect, useState} from "react";
 import {NavigateFunction, useNavigate, useParams, useSearchParams} from "react-router-dom";
 import {Alert, Box, Button, Divider, Paper, Stack, Typography} from "@mui/material";
 import WorkflowBasicSettingsPanel from "../components/workflow/WorkflowBasicSettingsPanel.tsx";
-import {ExecutionListing, StepBasedConfigurationDetail, WorkflowDetailCommunicationParadigmEnum, WorkflowDetailSimulationStrategyEnum} from "@kit-iai-proof/proof-config-manager-client";
+import {ExecutionListing, StepBasedConfigurationDetail, WorkflowDetail, WorkflowDetailCommunicationParadigmEnum, WorkflowDetailSimulationStrategyEnum} from "@kit-iai-proof/proof-config-manager-client";
 import {useTranslation} from "react-i18next";
-import {useIsFetching, useQuery, UseQueryResult} from "@tanstack/react-query";
-import {EXECUTIONS_KEY, STEPBASEDCONFIG_DEFAULT, WORKFLOWS_KEY} from "../../../utils/constants.ts";
-import ConfigHeader from "../components/ConfigHeader.tsx";
+import {useMutation, UseMutationResult, useQuery, useQueryClient, UseQueryResult} from "@tanstack/react-query";
+import {ENTITY_TYPES, INVALIDATION_KEYS, STEPBASEDCONFIG_DEFAULT, WORKFLOWS_KEY} from "../../../utils/constants.ts";
+import PageHeader from "../../../app/components/PageHeader.tsx";
 import WorkflowStepBasedConfigPanel from "../components/workflow/WorkflowStepBasedConfigPanel.tsx";
 import {EditNoteRounded} from "@mui/icons-material";
 import ConfirmDialog from "../../../app/components/ConfirmDialog.tsx";
-import {ConfigContext} from "../../../provider/IConfigContext.tsx";
 import {IAppContext} from "../../../provider/AppProvider.tsx";
 import {AppContext} from "../../../provider/AppContext.tsx";
 import {AxiosError} from "axios";
-import {IWorkflowService} from "../../../services/interfaces/IWorkflowService.ts";
-import WorkflowService from "../../../services/WorkflowService.ts";
-import {useAuth} from "react-oidc-context";
+import {workflowService} from "../../../services/instances.ts";
+import {v4 as uuidv4} from "uuid";
+import {getErrorMessage} from "../../../utils/error.ts";
+import {executionsForWorkflowQueryOptions, workflowQueryOptions} from "../../../query/options/workflowQueryOptions.tsx";
 
 const MonitoringDetail: () => ReactNode = (): ReactNode => {
 
     const {t} = useTranslation();
-    const {user} = useAuth();
     const {workflowId} = useParams();
     const [searchParams] = useSearchParams();
-    const {
-        hasUnsavedChanges,
-        updateHasUnsavedChanges,
-        updateAllowNavigation,
-        settings,
-        updateLastUsedWorkflowId
-    } = useContext<IAppContext>(AppContext);
-    const {workflow, updateWorkflowId, workflowMutation, workflowDeletion} = useContext(ConfigContext);
+    const queryClient = useQueryClient();
+    const {hasUnsavedChanges, updateError, sessionKey, updateLastUsedWorkflowId, updateHasUnsavedChanges, updateAllowNavigation} = useContext<IAppContext>(AppContext);
     const navigate: NavigateFunction = useNavigate();
     const returnToWorkflowId: string | null = searchParams.get("workflowId");
-
-    const workflowService: IWorkflowService = useMemo((): IWorkflowService => new WorkflowService(settings.configBasePath, user?.access_token), [settings.configBasePath, user?.access_token]);
-    const isFetching: number = useIsFetching({queryKey: [WORKFLOWS_KEY, workflowId], exact: true});
 
     const [stepBasedConfig, setStepBasedConfig] = useState<StepBasedConfigurationDetail | undefined>(undefined);
     const [communicationParadigm, setCommunicationParadigm] = useState<WorkflowDetailCommunicationParadigmEnum | undefined>(undefined);
@@ -50,13 +40,43 @@ const MonitoringDetail: () => ReactNode = (): ReactNode => {
     const [simulationStrategyError, setSimulationStrategyError] = useState<boolean>(false);
     const [keyErrors, setKeyErrors] = useState<{ [key: string]: boolean }>({});
 
-    const {data: executions}: UseQueryResult<ExecutionListing[], AxiosError> = useQuery({
-        queryKey: [EXECUTIONS_KEY, "workflow", workflowId],
-        refetchOnWindowFocus: true,
-        enabled: !!workflowId,
-        retry: 2,
-        queryFn: async ({signal}: any): Promise<ExecutionListing[]> => {
-            return await workflowService.getExecutionsForWorkflow(workflowId!, signal);
+    const {data: workflow}: UseQueryResult<WorkflowDetail, AxiosError> = useQuery(workflowQueryOptions(workflowId));
+    const {data: executionsForWorkflow}: UseQueryResult<ExecutionListing[], AxiosError> = useQuery(executionsForWorkflowQueryOptions(workflowId));
+
+    const workflowMutation: UseMutationResult<WorkflowDetail, AxiosError, WorkflowDetail, any> = useMutation({
+        retry: false,
+        mutationFn: async (workflow: WorkflowDetail): Promise<WorkflowDetail> => {
+            if (workflow.id) return await workflowService.updateWorkflow(workflow.id, workflow, undefined, sessionKey);
+            else return await workflowService.saveWorkflow({...workflow, id: uuidv4()}, undefined, sessionKey);
+        },
+        onMutate: async (): Promise<void> => {
+            return await queryClient.cancelQueries({queryKey: [WORKFLOWS_KEY]});
+        },
+        onSuccess: async (result: WorkflowDetail): Promise<void> => {
+            for (const queryKey of INVALIDATION_KEYS[WORKFLOWS_KEY]) await queryClient.invalidateQueries({
+                queryKey: [queryKey],
+                exact: false
+            });
+            await queryClient.setQueryData([WORKFLOWS_KEY, result.id], result);
+        },
+        onError: (error: AxiosError): void => {
+            updateError(getErrorMessage(error, ENTITY_TYPES[WORKFLOWS_KEY], t));
+        }
+    });
+
+    const workflowDeletion: UseMutationResult<boolean, AxiosError, string, void> = useMutation({
+        retry: false,
+        mutationFn: async (workflowId: string): Promise<boolean> => {
+            return await workflowService.deleteWorkflow(workflowId, undefined, sessionKey);
+        },
+        onSuccess: async (): Promise<void> => {
+            for (const queryKey of INVALIDATION_KEYS[WORKFLOWS_KEY]) await queryClient.invalidateQueries({
+                queryKey: [queryKey],
+                exact: false
+            });
+        },
+        onError: (error: AxiosError): void => {
+            updateError(getErrorMessage(error, ENTITY_TYPES[WORKFLOWS_KEY], t));
         }
     });
 
@@ -112,10 +132,6 @@ const MonitoringDetail: () => ReactNode = (): ReactNode => {
         setId(workflow?.id);
     }, [workflow?.simulationStrategy, workflow?.communicationParadigm, workflow?.description, workflow?.id, workflow?.label, workflow?.stepBasedConfig]);
 
-    useEffect(() => {
-        if (workflowId) updateWorkflowId(workflowId);
-    }, [updateWorkflowId, workflowId]);
-
     return (
         <Fragment>
             <Box
@@ -124,83 +140,82 @@ const MonitoringDetail: () => ReactNode = (): ReactNode => {
                 paddingLeft={10}
                 paddingBottom={15}
             >
-                {
-                    workflow && !isFetching && <Paper elevation={0} sx={{pb: 3}}>
-                        <Box padding={3}>
-                            <ConfigHeader
-                                headerKey={"page.header.configs.workflow"}
-                                tooltipTitle={"tooltip.workflow"}
-                                subHeaderValue={workflow?.label ?? ""}
-                                icon={
-                                    <Fragment>
-                                        <EditNoteRounded
-                                            color={"primary"}
-                                            fontSize={"large"}
-                                        />
-                                    </Fragment>
-                                }
-                                buttons={
-                                    <Fragment>
-                                        <Button
-                                            variant={"outlined"}
-                                            onClick={async (): Promise<void> => {
-                                                navigate(returnToWorkflowId ? `/editor/${returnToWorkflowId}` : `/configs/workflows/`, returnToWorkflowId ? {state: {from: location.pathname}} : {});
-                                            }}
-                                            color={"primary"}>
-                                            {t("action.close")}
-                                        </Button>
-                                        <Button
-                                            disabled={!hasUnsavedChanges}
-                                            variant={"outlined"}
-                                            onClick={handleSave}
-                                            color={"primary"}>
-                                            {t("action.save")}
-                                        </Button>
-                                        <Button
-                                            variant={"outlined"}
-                                            color={"error"}
-                                            onClick={(): void => {
-                                                setDeleteDialogOpen(true)
-                                            }}
-                                        >
-                                            {t("action.delete")}
-                                        </Button>
-                                    </Fragment>
-                                }
-                            />
-                            <Divider/>
-                            <WorkflowBasicSettingsPanel
-                                id={id}
-                                setId={setId}
-                                label={label}
-                                labelError={labelError}
-                                setLabel={setLabel}
-                                description={description}
-                                setDescription={setDescription}
-                                communicationParadigm={communicationParadigm}
-                                paradigmError={paradigmError}
-                                setCommunicationParadigm={setCommunicationParadigm}
-                                simulationStrategy={simulationStrategy}
-                                simulationStrategyError={simulationStrategyError}
-                                setSimulationStrategy={setSimulationStrategy}
-                                stepBasedConfig={stepBasedConfig}
-                                modifiedBy={workflow.lastModifiedBy!}
-                                createdBy={workflow.createdBy!}
-                                modifiedDate={new Date(workflow.lastModifiedDate!)}
-                                creationDate={new Date(workflow.creationDate!)}
-                            />
-                            {
-                                communicationParadigm === WorkflowDetailCommunicationParadigmEnum.Stepbased &&
-                                <WorkflowStepBasedConfigPanel
-                                    stepBasedConfig={stepBasedConfig}
-                                    setStepBasedConfig={setStepBasedConfig}
-                                    keyErrors={keyErrors}
-                                    setKeyErrors={setKeyErrors}
-                                />
+                <Paper elevation={0} sx={{pb: 3}}>
+                    <Box padding={3}>
+                        <PageHeader
+                            headerKey={"page.header.configs.workflow"}
+                            tooltipTitle={"tooltip.workflow"}
+                            subHeaderValue={workflow?.label ?? ""}
+                            icon={
+                                <Fragment>
+                                    <EditNoteRounded
+                                        color={"primary"}
+                                        fontSize={"large"}
+                                    />
+                                </Fragment>
                             }
-                        </Box>
-                    </Paper>
-                }
+                            buttons={
+                                <Fragment>
+                                    <Button
+                                        variant={"outlined"}
+                                        onClick={async (): Promise<void> => {
+                                            navigate(returnToWorkflowId ? `/editor/${returnToWorkflowId}` : `/configs/workflows/`, returnToWorkflowId ? {state: {from: location.pathname}} : {});
+                                        }}
+                                        color={"primary"}>
+                                        {t("action.close")}
+                                    </Button>
+                                    <Button
+                                        disabled={!hasUnsavedChanges}
+                                        variant={"outlined"}
+                                        onClick={handleSave}
+                                        color={"primary"}>
+                                        {t("action.save")}
+                                    </Button>
+                                    <Button
+                                        variant={"outlined"}
+                                        color={"error"}
+                                        onClick={(): void => {
+                                            setDeleteDialogOpen(true)
+                                        }}
+                                    >
+                                        {t("action.delete")}
+                                    </Button>
+                                </Fragment>
+                            }
+                        />
+                        <Divider/>
+                        <WorkflowBasicSettingsPanel
+                            id={id}
+                            setId={setId}
+                            label={label}
+                            labelError={labelError}
+                            setLabel={setLabel}
+                            description={description}
+                            setDescription={setDescription}
+                            communicationParadigm={communicationParadigm}
+                            paradigmError={paradigmError}
+                            setCommunicationParadigm={setCommunicationParadigm}
+                            simulationStrategy={simulationStrategy}
+                            simulationStrategyError={simulationStrategyError}
+                            setSimulationStrategy={setSimulationStrategy}
+                            stepBasedConfig={stepBasedConfig}
+                            modifiedBy={workflow?.lastModifiedBy}
+                            createdBy={workflow?.createdBy}
+                            modifiedDate={workflow?.lastModifiedDate ? new Date(workflow.lastModifiedDate) : undefined}
+                            creationDate={workflow?.creationDate ? new Date(workflow.creationDate) : undefined}
+                        />
+                        {
+                            communicationParadigm === WorkflowDetailCommunicationParadigmEnum.Stepbased &&
+                            <WorkflowStepBasedConfigPanel
+                                blocks={workflow?.blocks}
+                                stepBasedConfig={stepBasedConfig}
+                                setStepBasedConfig={setStepBasedConfig}
+                                keyErrors={keyErrors}
+                                setKeyErrors={setKeyErrors}
+                            />
+                        }
+                    </Box>
+                </Paper>
             </Box>
             <ConfirmDialog
                 dialogTitle={t("dialog.header.confirmDelete")}
@@ -210,10 +225,10 @@ const MonitoringDetail: () => ReactNode = (): ReactNode => {
                 extraContent={
                     <Fragment>
                         {
-                            executions && executions.length > 0 && <Alert severity="error">
+                            executionsForWorkflow && executionsForWorkflow.length > 0 && <Alert severity="error">
                                 <Typography paddingBottom={1}>{t("action.deleteAllExecutions")}:</Typography>
                                 {
-                                    executions.map((execution: ExecutionListing): ReactNode => {
+                                    executionsForWorkflow.map((execution: ExecutionListing): ReactNode => {
                                         return (
                                             <Fragment key={execution.id}>
                                                 <Stack direction={"row"} spacing={1}>
@@ -228,10 +243,8 @@ const MonitoringDetail: () => ReactNode = (): ReactNode => {
                     </Fragment>
                 }
                 callback={() => {
-                    updateWorkflowId(undefined);
                     updateAllowNavigation(true)
                     if (workflow?.id) {
-                        updateWorkflowId(undefined)
                         workflowDeletion
                             .mutateAsync(workflow.id)
                             .then((): void => {

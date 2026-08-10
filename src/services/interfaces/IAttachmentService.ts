@@ -2,7 +2,7 @@ import {AttachmentDetail, AttachmentPagingModelListing, RequestListing as Reques
 
 export interface IAttachmentService {
 
-    searchAttachment(signal: AbortSignal | undefined, request: Request): Promise<AttachmentPagingModelListing>;
+    searchAttachments(signal: AbortSignal | undefined, request: Request): Promise<AttachmentPagingModelListing>;
 
     getAttachments(signal: AbortSignal | undefined): Promise<AttachmentDetail[]>;
 

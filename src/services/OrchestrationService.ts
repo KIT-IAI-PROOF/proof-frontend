@@ -8,8 +8,8 @@ class OrchestrationService implements IOrchestrationService {
     private config: Configuration;
     private orchestrationApi: OrchestrationControllerApi;
 
-    constructor(basePath: string, token: string | undefined) {
-        this.config = new Configuration({basePath: basePath, accessToken: token});
+    constructor(basePath: string) {
+        this.config = new Configuration({basePath: basePath});
         this.orchestrationApi = new OrchestrationControllerApi(this.config, basePath, axios);
     }
 

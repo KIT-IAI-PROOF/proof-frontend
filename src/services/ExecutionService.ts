@@ -7,8 +7,8 @@ class ExecutionService implements IExecutionService {
 
     private executionApi: ExecutionControllerApi;
 
-    constructor(basePath: string, token: string | undefined) {
-        const config: Configuration = new Configuration({basePath: basePath, accessToken: token});
+    constructor(basePath: string) {
+        const config: Configuration = new Configuration({basePath: basePath});
         this.executionApi = new ExecutionControllerApi(config, basePath, axios);
     }
 

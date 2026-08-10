@@ -44,9 +44,11 @@ const OutputsPanel = ({
                           outModelVarNamesError,
                           accordionRefs
                       }: IProps) => {
+
     const {t} = useTranslation();
     const theme: Theme = useTheme();
     const {hasUnsavedChanges, updateHasUnsavedChanges} = useContext<IAppContext>(AppContext);
+
     return (
         <Fragment>
             {

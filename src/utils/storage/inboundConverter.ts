@@ -21,8 +21,8 @@ export const convertBlocks: (blocks: RBlock[], workflowId: string) => TBlock[] =
         const [width, height]: [number, number] = getDimensions(block);
         return {
             id: block.id!,
-            height: height,
-            width: width,
+            initialHeight: height,
+            initialWidth: width,
             type: block.type!,
             position: {
                 x: block?.position?.x ?? 0,

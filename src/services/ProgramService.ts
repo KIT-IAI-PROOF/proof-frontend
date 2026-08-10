@@ -6,8 +6,8 @@ import type {AxiosResponse, RawAxiosRequestConfig} from "axios";
 class ProgramService implements IProgramService {
     private programApi: ProgramControllerApi;
 
-    constructor(basePath: string, token: string | undefined) {
-        const config: Configuration = new Configuration({basePath: basePath, accessToken: token});
+    constructor(basePath: string) {
+        const config: Configuration = new Configuration({basePath: basePath});
         this.programApi = new ProgramControllerApi(config, basePath, axios);
     }
 
@@ -23,15 +23,15 @@ class ProgramService implements IProgramService {
         return response.data;
     }
 
-    async saveProgram(program: ProgramDetail, signal: AbortSignal | undefined, sessionKey: string): Promise<ProgramDetail> {
-        const options: RawAxiosRequestConfig = {signal: signal};
-        const response: AxiosResponse<ProgramDetail> = await this.programApi.createProgram(program, sessionKey, options);
-        return response.data;
-    }
-
     async getProgram(programId: string, signal: AbortSignal | undefined): Promise<ProgramDetail> {
         const options: RawAxiosRequestConfig = {signal: signal};
         const response: AxiosResponse<ProgramDetail> = await this.programApi.getProgram(programId, options);
+        return response.data;
+    }
+
+    async saveProgram(program: ProgramDetail, signal: AbortSignal | undefined, sessionKey: string): Promise<ProgramDetail> {
+        const options: RawAxiosRequestConfig = {signal: signal};
+        const response: AxiosResponse<ProgramDetail> = await this.programApi.createProgram(program, sessionKey, options);
         return response.data;
     }
 

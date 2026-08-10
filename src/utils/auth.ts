@@ -1,5 +1,5 @@
 import {AuthProviderProps} from "react-oidc-context";
-import {User, WebStorageStateStore} from "oidc-client-ts";
+import {OidcClientSettings, User, WebStorageStateStore} from "oidc-client-ts";
 
 export const authConfig: AuthProviderProps = {
     authority: "http://localhost:8080/realms/proof",
@@ -31,3 +31,11 @@ export const isUser = (user: User): boolean => {
     const profile: any = user.profile;
     return profile.realm_access.roles.includes("USER")
 }
+
+export const getUser: () => (User | null) = (): User | null => {
+    const oidcStorage: string | null = sessionStorage.getItem(`oidc.user:${(authConfig as OidcClientSettings).authority}:${(authConfig as OidcClientSettings).client_id}`);
+    if (!oidcStorage) {
+        return null;
+    }
+    return User.fromStorageString(oidcStorage);
+};

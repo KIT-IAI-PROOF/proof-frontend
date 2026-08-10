@@ -7,8 +7,8 @@ class BlockService implements IBlockService {
 
     private blockApi: BlockControllerApi;
 
-    constructor(basePath: string, token: string | undefined) {
-        const config: Configuration = new Configuration({basePath: basePath, accessToken: token});
+    constructor(basePath: string) {
+        const config: Configuration = new Configuration({basePath: basePath});
         this.blockApi = new BlockControllerApi(config, basePath, axios);
     }
 

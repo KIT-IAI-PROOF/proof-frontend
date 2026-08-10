@@ -1,24 +1,21 @@
-import {ReactNode, useCallback, useMemo, useState} from "react";
+import {ReactNode, useCallback, useMemo, useRef, useState} from "react";
 import {usePersistedState} from "../hooks/usePersistedState.ts";
 import {v4 as uuidv4} from "uuid";
 import {DEFAULT_PALETTE} from "../utils/palette.ts";
 import {IPalette} from "../model/IPalette.ts";
-import {OidcClientSettings, User} from "oidc-client-ts";
-import {authConfig} from "../utils/auth.ts";
-import {ISettings} from "../model/ISettings.ts";
-import {DEFAULT_SETTINGS} from "../utils/constants.ts";
 import {Provider} from "../types/provider.ts";
 import {Updater} from "../types/updater.ts";
 import {useNavigationProtection} from "../hooks/useNavigationProtection.ts";
 import {AppContext} from "./AppContext.tsx";
+import {useWebSocket} from "../hooks/useWebSocket.ts";
+import {IStatusUpdate, useStatusWebsocket} from "../hooks/useStatusWebSocket.ts";
+import {DEFAULT_SETTINGS} from "../utils/settings.ts";
 
 interface IProps {
     children: ReactNode;
 }
 
 export interface IAppContext {
-    updateSettings: Updater<ISettings>;
-    settings: ISettings;
     sessionId: string;
     dialog: string | undefined;
     dialogData: object | undefined;
@@ -34,12 +31,15 @@ export interface IAppContext {
     info: string | undefined;
     updateInfo: Updater<string | undefined>;
     updateError: Updater<string | undefined>;
-    getUser: () => User | null;
     hasUnsavedChanges: boolean;
     updateHasUnsavedChanges: Updater<boolean>;
     updateAllowNavigation: Updater<boolean>;
     lastUsedWorkflowId: string | undefined;
     updateLastUsedWorkflowId: (value: string) => void;
+    publishEntityMessage: (id: string, entity: string) => void;
+    currentExecutionId: string | undefined;
+    updateCurrentExecutionId: (executionId: string | undefined) => void;
+    registerStatusUpdateCallback: (callback: (update: IStatusUpdate) => void) => void;
 }
 
 const AppProvider: Provider<IProps> = ({children}: IProps): ReactNode => {
@@ -53,9 +53,10 @@ const AppProvider: Provider<IProps> = ({children}: IProps): ReactNode => {
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState<boolean>(false);
     const [allowNavigation, setAllowNavigation] = useState<boolean>(false);
     const [lastUsedWorkflowId, setLastUsedWorkflowId] = usePersistedState<string>("", "lastUsedWorkflowId");
+    const [currentExecutionId, setCurrentExecutionId] = useState<string | undefined>(undefined);
+    const statusUpdateCallbackRef = useRef<((update: IStatusUpdate) => void) | undefined>(undefined);
 
     const [palette, setPalette] = usePersistedState<IPalette[]>(DEFAULT_PALETTE, "palette");
-    const [settings, setSettings] = usePersistedState<ISettings>(DEFAULT_SETTINGS, "settings");
     const [primaryPaletteIndex, setPrimaryPalette] = usePersistedState<number>(2, "primaryPalette");
     const [secondaryPaletteIndex, setSecondaryPalette] = usePersistedState<number>(3, "secondaryPalette");
 
@@ -66,10 +67,6 @@ const AppProvider: Provider<IProps> = ({children}: IProps): ReactNode => {
     const updateInfo: Updater<string | undefined> = useCallback((info: string | undefined): void => {
         setInfo(info);
     }, []);
-
-    const updateSettings: Updater<ISettings> = useCallback((settings: ISettings): void => {
-        setSettings(settings);
-    }, [setSettings]);
 
     const updatePalette: Updater<IPalette[]> = useCallback((palette: IPalette[]): void => {
         setPalette(palette);
@@ -91,6 +88,18 @@ const AppProvider: Provider<IProps> = ({children}: IProps): ReactNode => {
         setLastUsedWorkflowId(value);
     }, [setLastUsedWorkflowId]);
 
+    const updateCurrentExecutionId: (executionId: string | undefined) => void = useCallback((executionId: string | undefined): void => {
+        setCurrentExecutionId(executionId);
+    }, []);
+
+    const registerStatusUpdateCallback: (callback: (update: IStatusUpdate) => void) => void = useCallback((callback: (update: IStatusUpdate) => void): void => {
+        statusUpdateCallbackRef.current = callback;
+    }, []);
+
+    const handleStatusUpdate = useCallback((update: IStatusUpdate): void => {
+        statusUpdateCallbackRef.current?.(update);
+    }, []);
+
     useNavigationProtection({
         hasUnsavedChanges,
         clearUnsavedChanges: () => updateHasUnsavedChanges(false),
@@ -106,19 +115,15 @@ const AppProvider: Provider<IProps> = ({children}: IProps): ReactNode => {
         setDialogData(data);
     }, []);
 
-    const getUser: () => (User | null) = (): User | null => {
-        const oidcStorage: string | null = sessionStorage.getItem(`oidc.user:${(authConfig as OidcClientSettings).authority}:${(authConfig as OidcClientSettings).client_id}`);
-        if (!oidcStorage) {
-            return null;
-        }
-        return User.fromStorageString(oidcStorage);
-    };
+    const publishEntityMessage = useWebSocket({updateInfo: updateInfo, settings: DEFAULT_SETTINGS, sessionKey: sessionKey});
+
+    useStatusWebsocket({executionId: currentExecutionId ?? "", onStatusUpdate: handleStatusUpdate, settings: DEFAULT_SETTINGS});
 
     return (
         <AppContext.Provider
             value={{
                 lastUsedWorkflowId: lastUsedWorkflowId,
-                settings: settings,
+
                 dialog: dialog,
                 dialogData: dialogData,
                 primaryPaletteIndex: primaryPaletteIndex,
@@ -129,10 +134,10 @@ const AppProvider: Provider<IProps> = ({children}: IProps): ReactNode => {
                 info: info,
                 sessionKey: sessionKey,
                 hasUnsavedChanges: hasUnsavedChanges,
+                currentExecutionId: currentExecutionId,
+                publishEntityMessage: publishEntityMessage,
                 updateError: updateError,
                 updateInfo: updateInfo,
-                getUser: getUser,
-                updateSettings: updateSettings,
                 updateDialog: updateDialog,
                 updatePrimaryPalette: updatePrimaryPalette,
                 updateSecondaryPalette: updateSecondaryPalette,
@@ -140,6 +145,8 @@ const AppProvider: Provider<IProps> = ({children}: IProps): ReactNode => {
                 updateHasUnsavedChanges: updateHasUnsavedChanges,
                 updateAllowNavigation: updateAllowNavigation,
                 updateLastUsedWorkflowId: updateLastUsedWorkflowId,
+                updateCurrentExecutionId: updateCurrentExecutionId,
+                registerStatusUpdateCallback: registerStatusUpdateCallback,
             }}
         >
             {children}

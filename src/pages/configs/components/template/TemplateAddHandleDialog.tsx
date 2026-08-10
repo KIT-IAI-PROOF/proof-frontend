@@ -365,7 +365,8 @@ const AddHandleDialog: ({
                                     const handleCommunicationType: string = event.target.value;
                                     setHandle((handle: OutputDetail | InputDetail | undefined) => ({
                                         ...handle,
-                                        defaultValue: !handleCommunicationType.includes("STATIC") ? undefined : (handle as InputDetail).defaultValue,
+                                        startValue: handleCommunicationType.includes("STATIC") ? undefined : (handle as InputDetail)?.startValue,
+                                        defaultValue: (handleCommunicationType.includes("STATIC") && (handle as InputDetail)?.required) ? undefined : (handle as InputDetail)?.defaultValue,
                                         communicationType: isInput ? handleCommunicationType as InputDetailCommunicationTypeEnum : handleCommunicationType as OutputDetailCommunicationTypeEnum
                                     }));
                                 }}>
@@ -451,7 +452,33 @@ const AddHandleDialog: ({
                             )}
                         </FormControl>
                     </Stack>
-                    {isInput && !(handle as InputDetail)?.required && handle?.communicationType?.includes("STATIC") &&
+                    {isInput && (handle as InputDetail)?.communicationType !== InputDetailCommunicationTypeEnum.StepbasedStatic &&
+                        <Stack direction="row">
+                            <InputAdornment position="start">
+                                <Tooltip title={t("tooltip.startValue") || ""}>
+                                    <Info
+                                        fontSize={"small"}
+                                        sx={{ml: 1, mt: 2.5, cursor: "pointer"}}
+                                    />
+                                </Tooltip>
+                            </InputAdornment>
+                            <TextField
+                                sx={{pb: 2}}
+                                fullWidth={true}
+                                label={t("word.startValue")}
+                                value={(handle as InputDetail)?.startValue ?? ""}
+                                variant="outlined"
+                                required={false}
+                                onChange={(event: ChangeEvent<HTMLTextAreaElement | HTMLInputElement>): void => {
+                                    setHandle((handle: OutputDetail | InputDetail | undefined) => ({
+                                        ...handle,
+                                        startValue: event.target.value
+                                    }));
+                                }}
+                            />
+                        </Stack>
+                    }
+                    {isInput &&
                         <Stack direction="row">
                             <InputAdornment position="start">
                                 <Tooltip title={t("tooltip.defaultValue") || ""}>
@@ -465,11 +492,11 @@ const AddHandleDialog: ({
                                 sx={{pb: 2}}
                                 fullWidth={true}
                                 label={t("word.defaultValue")}
-                                error={modelVarnameError}
-                                helperText={modelVarnameError ? t("word.required") : ""}
-                                value={(handle as InputDetail).defaultValue ?? ""}
+                                value={(handle as InputDetail)?.defaultValue ?? ""}
                                 variant="outlined"
-                                required={true}
+                                required={(handle as InputDetail)?.communicationType === InputDetailCommunicationTypeEnum.StepbasedStatic && !(handle as InputDetail)?.required}
+                                error={(handle as InputDetail)?.communicationType === InputDetailCommunicationTypeEnum.StepbasedStatic && !(handle as InputDetail)?.required && !(handle as InputDetail)?.defaultValue}
+                                helperText={(handle as InputDetail)?.communicationType === InputDetailCommunicationTypeEnum.StepbasedStatic && !(handle as InputDetail)?.required && !(handle as InputDetail)?.defaultValue ? t("word.required") : ""}
                                 onChange={(event: ChangeEvent<HTMLTextAreaElement | HTMLInputElement>): void => {
                                     setHandle((handle: OutputDetail | InputDetail | undefined) => ({
                                         ...handle,

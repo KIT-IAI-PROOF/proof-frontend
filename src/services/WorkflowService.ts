@@ -7,8 +7,8 @@ class WorkflowService implements IWorkflowService {
 
     private workflowApi: WorkflowControllerApi;
 
-    constructor(basePath: string, token: string | undefined) {
-        const config: Configuration = new Configuration({basePath: basePath, accessToken: token});
+    constructor(basePath: string) {
+        const config: Configuration = new Configuration({basePath: basePath});
         this.workflowApi = new WorkflowControllerApi(config, basePath, axios);
     }
 

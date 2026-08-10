@@ -23,9 +23,9 @@ interface IProps {
     setSimulationStrategy: (simulationStrategy: WorkflowDetailSimulationStrategyEnum) => void,
     setLabel: (label: string) => void,
     setDescription: (description: string) => void,
-    modifiedBy: string,
+    modifiedBy: string | undefined,
     modifiedDate: Date | undefined,
-    createdBy: string,
+    createdBy: string | undefined,
     creationDate: Date | undefined,
 }
 
@@ -277,7 +277,8 @@ const WorkflowBasicSettingsPanel: ({
                                 if (!hasUnsavedChanges) updateHasUnsavedChanges(true)
                             }}
                         >
-                            {/* <MenuItem
+                            {/*
+                            <MenuItem
                                 key={WorkflowDetailSimulationStrategyEnum.Abort}
                                 value={WorkflowDetailSimulationStrategyEnum.Abort}
                             >
@@ -294,19 +295,22 @@ const WorkflowBasicSettingsPanel: ({
                                 value={WorkflowDetailSimulationStrategyEnum.Ignore}
                             >
                                 {WorkflowDetailSimulationStrategyEnum.Ignore}
-                            </MenuItem> */}
+                            </MenuItem>
+                            */}
                             <MenuItem
                                 key={WorkflowDetailSimulationStrategyEnum.WaitAndContinue}
                                 value={WorkflowDetailSimulationStrategyEnum.WaitAndContinue}
                             >
                                 {WorkflowDetailSimulationStrategyEnum.WaitAndContinue}
                             </MenuItem>
+                            {/*
                             <MenuItem
                                 key={WorkflowDetailSimulationStrategyEnum.WaitAndRetry}
                                 value={WorkflowDetailSimulationStrategyEnum.WaitAndRetry}
                             >
                                 {WorkflowDetailSimulationStrategyEnum.WaitAndRetry}
                             </MenuItem>
+                            */}
                         </Select>
                         {simulationStrategyError && (
                             <Typography paddingLeft={2} paddingTop={0.5} variant="caption" color="error">

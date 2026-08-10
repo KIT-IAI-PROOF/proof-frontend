@@ -1,30 +1,21 @@
-import {useCallback, useContext, useEffect} from "react";
+import {useCallback, useEffect} from "react";
 import {Client, IMessage} from "@stomp/stompjs";
 import {AuthContextProps, useAuth} from "react-oidc-context";
 import {IMessage as RMessage} from "../model/IMessage.ts";
 import {useTranslation} from "react-i18next";
 import {QueryClient, useQueryClient} from "@tanstack/react-query";
 import {ATTACHMENTS_KEY, BLOCKS_KEY, ENTITY_TYPES, EXECUTIONS_KEY, INVALIDATION_KEYS, PROGRAMS_KEY, TEMPLATES_KEY, VALID_ACTIONS, WORKFLOWS_KEY} from "../utils/constants.ts";
-import {BlockDetail, TemplateDetail, WorkflowDetail} from "@kit-iai-proof/proof-config-manager-client";
-import {IAppContext} from "../provider/AppProvider.tsx";
-import {AppContext} from "../provider/AppContext.tsx";
+import {ISettings} from "../model/ISettings.ts";
 
 const client: Client = new Client();
 
-type UseWebSocket = ({template, block, workflow}: IProps) => void
+type UseWebSocket = ({updateInfo, sessionKey, settings}: { updateInfo: any, sessionKey: string, settings: ISettings }) => (id: string, entity: string) => void
 
-interface IProps {
-    template?: TemplateDetail | undefined;
-    block?: BlockDetail | undefined;
-    workflow?: WorkflowDetail | undefined;
-}
-
-const useWebSocket: UseWebSocket = ({template, block, workflow}: IProps): void => {
+const useWebSocket: UseWebSocket = ({updateInfo, sessionKey, settings}: { updateInfo: any, sessionKey: string, settings: ISettings }): (id: string, entity: string) => void => {
 
     const {t} = useTranslation();
     const {user}: AuthContextProps = useAuth();
     const queryClient: QueryClient = useQueryClient();
-    const {updateInfo, sessionKey, settings}: IAppContext = useContext<IAppContext>(AppContext);
 
     const invalidateQueries: (queryKeys: string[]) => Promise<void> = useCallback(async (queryKeys: string[]): Promise<void> => {
         for (const queryKey of queryKeys) await queryClient.invalidateQueries({queryKey: [queryKey], exact: false});
@@ -38,11 +29,13 @@ const useWebSocket: UseWebSocket = ({template, block, workflow}: IProps): void =
     }, [t, updateInfo]);
 
     const publishEntityMessage: (id: string, entity: string) => void = useCallback((id: string, entity: string): void => {
-        const message: RMessage = {id: id, sessionKey: sessionKey, action: "OPENED", entity: entity};
-        client.publish({
-            destination: "/app/edits",
-            body: JSON.stringify(message)
-        });
+        if (client.connected) {
+            const message: RMessage = {id: id, sessionKey: sessionKey, action: "OPENED", entity: entity};
+            client.publish({
+                destination: "/app/edits",
+                body: JSON.stringify(message)
+            });
+        }
     }, [sessionKey]);
 
     useEffect((): () => void => {
@@ -89,13 +82,7 @@ const useWebSocket: UseWebSocket = ({template, block, workflow}: IProps): void =
         };
     }, [handleMessage, invalidateQueries, sessionKey, settings.websocketPath, t, updateInfo, user?.access_token]);
 
-    useEffect((): void => {
-        if (client.connected) {
-            if (workflow?.id) publishEntityMessage(workflow.id, "workflows");
-            if (block?.id) publishEntityMessage(block.id, "blocks");
-            if (template?.id) publishEntityMessage(template.id, "templates");
-        }
-    }, [workflow?.id, block?.id, template?.id, sessionKey, publishEntityMessage]);
+    return publishEntityMessage;
 
 };
 

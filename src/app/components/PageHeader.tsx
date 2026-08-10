@@ -12,13 +12,13 @@ interface IProps {
     icon?: ReactNode | undefined;
 }
 
-const ConfigHeader: ({buttons, headerKey, icon, subHeaderValue, tooltipTitle}: IProps) => ReactNode = ({
-                                                                                                           buttons,
-                                                                                                           headerKey,
-                                                                                                           icon,
-                                                                                                           subHeaderValue,
-                                                                                                           tooltipTitle
-                                                                                                       }: IProps): ReactNode => {
+const PageHeader: ({buttons, headerKey, icon, subHeaderValue, tooltipTitle}: IProps) => ReactNode = ({
+                                                                                                         buttons,
+                                                                                                         headerKey,
+                                                                                                         icon,
+                                                                                                         subHeaderValue,
+                                                                                                         tooltipTitle
+                                                                                                     }: IProps): ReactNode => {
 
     const {t} = useTranslation();
 
@@ -33,7 +33,7 @@ const ConfigHeader: ({buttons, headerKey, icon, subHeaderValue, tooltipTitle}: I
                 spacing={2}
             >
                 <Grid size={{xs: 12, lg: 8}}>
-                    <Stack direction={"row"} spacing={2} alignItems={"center"}>
+                    <Stack direction={"row"} spacing={1} alignItems={"center"}>
                         {
                             icon
                         }
@@ -58,7 +58,7 @@ const ConfigHeader: ({buttons, headerKey, icon, subHeaderValue, tooltipTitle}: I
                         <Tooltip title={t(tooltipTitle)}>
                             <Info
                                 color={"action"}
-                                sx={{ml: 2, cursor: "pointer", flexShrink: 0}}
+                                sx={{cursor: "pointer", flexShrink: 0}}
                             />
                         </Tooltip>
                     </Stack>
@@ -76,4 +76,4 @@ const ConfigHeader: ({buttons, headerKey, icon, subHeaderValue, tooltipTitle}: I
 
 }
 
-export default ConfigHeader;
+export default PageHeader;

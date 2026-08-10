@@ -28,19 +28,20 @@ import {TEdge} from "../../model/TEdge.ts";
 import {TBlock} from "../../model/TBlock.ts";
 import Grid from "@mui/material/Grid2";
 import LogViewer from "./components/LogViewer.tsx";
-import {IOrchestrationService} from "../../services/interfaces/IOrchestrationService.ts";
-import OrchestrationService from "../../services/OrchestrationService.ts";
-import {AuthContextProps, useAuth} from "react-oidc-context";
-import {MonitoringContext} from "../../provider/IMonitoringContext.tsx";
+import {MonitoringContext} from "../../provider/MonitoringContext.tsx";
 import {IAppContext} from "../../provider/AppProvider.tsx";
 import {AppContext} from "../../provider/AppContext.tsx";
 import {IMessage} from "@stomp/stompjs";
 import ConfirmDialog from "../../app/components/ConfirmDialog.tsx";
-import {ExecutionDetailStatusEnum, ExecutionListingStatusEnum} from "@kit-iai-proof/proof-config-manager-client";
-import {IExecutionService} from "../../services/interfaces/IExecutionService.ts";
-import ExecutionService from "../../services/ExecutionService.ts";
+import {ExecutionDetail, ExecutionDetailStatusEnum, ExecutionListingStatusEnum} from "@kit-iai-proof/proof-config-manager-client";
 import {saveAs} from 'file-saver';
 import ExecutionSettingsPanel from "./components/ExecutionSettingsPanel.tsx";
+import {useMutation, UseMutationResult, useQuery, useQueryClient, UseQueryResult} from "@tanstack/react-query";
+import {AxiosError} from "axios";
+import {ENTITY_TYPES, EXECUTIONS_KEY, INVALIDATION_KEYS} from "../../utils/constants.ts";
+import {getErrorMessage} from "../../utils/error.ts";
+import {executionService, orchestrationService} from "../../services/instances.ts";
+import {executionQueryOptions} from "../../query/options/executionQueryOptions.tsx";
 
 const MonitoringDetail: () => ReactNode = (): ReactNode => {
 
@@ -48,22 +49,11 @@ const MonitoringDetail: () => ReactNode = (): ReactNode => {
     const theme: Theme = useTheme();
     const {t} = useTranslation();
     const {executionId} = useParams();
-    const {settings}: IAppContext = useContext<IAppContext>(AppContext);
-    const {user}: AuthContextProps = useAuth();
+    const queryClient = useQueryClient();
+    const {sessionKey}: IAppContext = useContext<IAppContext>(AppContext);
     const isMobile = useMediaQuery(theme.breakpoints.down("md"));
-    const {
-        nodes,
-        nodeTypes,
-        edgeTypes,
-        edges,
-        execution,
-        deleteExecutionMutation,
-        updateExecutionId
-    } = useContext<IMonitoringContext>(MonitoringContext);
+    const {nodes, nodeTypes, edgeTypes, edges, updateBlockStates, blockStates, updateExecution} = useContext<IMonitoringContext>(MonitoringContext);
     const navigate: NavigateFunction = useNavigate();
-
-    const orchestrationService: IOrchestrationService = useMemo((): IOrchestrationService => new OrchestrationService(settings.executionBasePath, user?.access_token), [settings.executionBasePath, user?.access_token]);
-    const executionService: IExecutionService = useMemo((): IExecutionService => new ExecutionService(settings.configBasePath, user?.access_token), [settings.configBasePath, user?.access_token]);
 
     const [appId, setAppId] = useState<string | undefined>(undefined);
     const [messages, setMessages] = useState<IMessage[]>([])
@@ -85,10 +75,45 @@ const MonitoringDetail: () => ReactNode = (): ReactNode => {
         return undefined;
     }, [appId, nodes]);
 
+    const {data: execution}: UseQueryResult<ExecutionDetail, AxiosError> = useQuery(executionQueryOptions(executionId));
+
+    const executionDeletion: UseMutationResult<boolean, AxiosError, string, void> = useMutation({
+        retry: false,
+        mutationFn: async (executionId: string): Promise<boolean> => {
+            return await executionService.deleteExecution(executionId, undefined, sessionKey);
+        },
+        onSuccess: async (): Promise<void> => {
+            for (const queryKey of INVALIDATION_KEYS[EXECUTIONS_KEY]) await queryClient.invalidateQueries({
+                queryKey: [queryKey],
+                exact: false
+            });
+        },
+        onError: (error: AxiosError): void => {
+            getErrorMessage(error, ENTITY_TYPES[EXECUTIONS_KEY], t)
+        }
+    });
+
     useEffect((): void => {
-        if (executionId) updateExecutionId(executionId);
-        else updateExecutionId(undefined);
-    }, [updateExecutionId, executionId]);
+        if (execution) updateExecution(execution);
+    }, [updateExecution, execution]);
+
+    const restartExecution = async (): Promise<void> => {
+        let blockStatesCopy = blockStates
+        execution?.workflow?.blocks?.forEach(block => {
+            const index: number = blockStatesCopy.findIndex((blockState: {
+                blockId: string,
+                status: string | undefined,
+                cp?: number
+            }): boolean => blockState.blockId === block.id);
+            if (index !== -1) {
+                blockStatesCopy[index].status = undefined;
+                blockStatesCopy[index].cp = undefined;
+            }
+        })
+        updateBlockStates(blockStatesCopy)
+
+        if (execution?.id) await orchestrationService.startExecution(undefined, execution?.id)
+    }
 
     return (
         <Fragment>
@@ -133,7 +158,7 @@ const MonitoringDetail: () => ReactNode = (): ReactNode => {
                                                 variant={"outlined"}
                                                 disabled={execution?.status !== ExecutionListingStatusEnum.Stopped && execution?.status !== ExecutionListingStatusEnum.Aborted && execution?.status !== ExecutionListingStatusEnum.ShutDown}
                                                 onClick={async (): Promise<void> => {
-                                                    if (execution?.id) await orchestrationService.startExecution(undefined, execution?.id)
+                                                    await restartExecution()
                                                 }}
                                             >
                                                 {t('action.restart')}
@@ -310,8 +335,7 @@ const MonitoringDetail: () => ReactNode = (): ReactNode => {
                 setOpen={setDeleteExecutionDialogOpen}
                 callback={() => {
                     if (execution?.id) {
-                        updateExecutionId(undefined)
-                        deleteExecutionMutation
+                        executionDeletion
                             .mutateAsync(execution.id)
                             .then((): void => {
                                 navigate(`/monitoring/`);

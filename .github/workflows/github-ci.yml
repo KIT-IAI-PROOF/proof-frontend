@@ -1,0 +1,95 @@
+name: PROOF UI CI/CD
+
+on:
+  push:
+    tags:
+      - "*"
+
+env:
+  GITHUB_TOKEN: ${{ secrets.PROOF_PACKAGE_CI_TOKEN }}
+
+jobs:
+  build:
+    if: github.ref_type == 'tag'
+    # if: github.ref_type != 'tag' && !startsWith(github.event.head_commit.message, 'WIP')
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      packages: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Checkout CI scripts
+        uses: actions/checkout@v4
+        with:
+          repository: kit-iai-proof/proof-ci-scripts
+          path: ci-scripts
+          ref: main
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup path for scripts
+        run: echo "$GITHUB_WORKSPACE/ci-scripts" >> "$GITHUB_PATH"
+
+      - name: Setup node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: 'https://npm.pkg.github.com'
+
+      #- name: Check npm version
+      #   run: check-npm-git-version-match
+
+      - name: Build npm package
+        run: |
+          npm install
+          npm run build
+        env:
+          NODE_AUTH_TOKEN: ${{ env.GITHUB_TOKEN }}
+
+      - name: Prepare post-deploy
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          retention-days: 1
+
+  deploy:
+    if: github.ref_type == 'tag'
+    needs: build
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download built artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: Login to GHCR
+        run: echo "${GITHUB_TOKEN}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+      # Necessary because GitHub Actions does not allow to use uppercase letters in the image name, but the repository owner may contain uppercase letters.
+      - name: Normalize image name
+        run: |
+          echo "IMAGE_OWNER=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_ENV"
+
+      - name: Build and push image
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          IMAGE_NAME="ghcr.io/${IMAGE_OWNER}/${{ github.event.repository.name }}"
+          docker build \
+            -f docker/Dockerfile \
+            -t "${IMAGE_NAME}:${TAG}" \
+            .
+
+          docker push "${IMAGE_NAME}:${TAG}"

@@ -1,0 +1,30 @@
+import {ITemplateService} from "./interfaces/ITemplateService.ts";
+import TemplateService from "./TemplateService.ts";
+import {IProgramService} from "./interfaces/IProgramService.ts";
+import ProgramService from "./ProgramService.ts";
+import {IWorkflowService} from "./interfaces/IWorkflowService.ts";
+import WorkflowService from "./WorkflowService.ts";
+import {IBlockService} from "./interfaces/IBlockService.ts";
+import BlockService from "./BlockService.ts";
+import {IAttachmentService} from "./interfaces/IAttachmentService.ts";
+import AttachmentService from "./AttachmentService.ts";
+import {IExecutionService} from "./interfaces/IExecutionService.ts";
+import ExecutionService from "./ExecutionService.ts";
+import {IOrchestrationService} from "./interfaces/IOrchestrationService.ts";
+import OrchestrationService from "./OrchestrationService.ts";
+import {IFileService} from "./interfaces/IFileService.ts";
+import FileService from "./FileService.ts";
+import {IFMUImporterService} from "./interfaces/IFMUImporterService.ts";
+import FMUImporterService from "./FMUImporterService.ts";
+import {DEFAULT_SETTINGS} from "../utils/settings.ts";
+
+export const templateService: ITemplateService = new TemplateService(DEFAULT_SETTINGS.configBasePath);
+export const programService: IProgramService = new ProgramService(DEFAULT_SETTINGS.configBasePath);
+export const workflowService: IWorkflowService = new WorkflowService(DEFAULT_SETTINGS.configBasePath);
+export const blockService: IBlockService = new BlockService(DEFAULT_SETTINGS.configBasePath);
+export const attachmentService: IAttachmentService = new AttachmentService(DEFAULT_SETTINGS.configBasePath);
+export const executionService: IExecutionService = new ExecutionService(DEFAULT_SETTINGS.configBasePath);
+export const orchestrationService: IOrchestrationService = new OrchestrationService(DEFAULT_SETTINGS.executionBasePath);
+export const fileService: IFileService = new FileService(DEFAULT_SETTINGS.configBasePath);
+export const fmuImporterService: IFMUImporterService = new FMUImporterService(DEFAULT_SETTINGS.fmuImportBasePath);
+
